@@ -101,7 +101,10 @@ var SOURCE = installSource(new (class extends MangaSource {
     parseImages(html) {
         var list = [];
         var packed = match('\\(function\\(p,a,c,k,e,d\\).*?0,\\{\\}\\)\\)', html, 0);
-        if (!packed) return list;
+        if (!packed) {
+            log('[mhg] parseImages: packed not found, len=' + (html ? html.length : 0));
+            return list;
+        }
         try {
             var replaceable = split(packed, ',', -3);
             var fake = split(replaceable, "'", 1);
@@ -114,6 +117,9 @@ var SOURCE = installSource(new (class extends MangaSource {
             var e = object.sl.e;
             var m = object.sl.m;
             var files = object.files;
+            log('[mhg] parseImages: files=' + (files ? files.length : 0)
+                + ' path=' + path + ' replaceable=' + (replaceable ? replaceable.length : 0)
+                + ' real=' + (real ? real.length : 0));
             for (var i = 0; i < files.length; i++) {
                 list.push({
                     url: format('https://i.hamreus.com%s%s?e=%s&m=%s', path, files[i], e, m),
@@ -121,7 +127,7 @@ var SOURCE = installSource(new (class extends MangaSource {
                 });
             }
         } catch (e) {
-            // ignore
+            log('[mhg] parseImages error: ' + e);
         }
         return list;
     }

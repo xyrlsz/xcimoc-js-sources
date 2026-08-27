@@ -80,12 +80,50 @@ function matchArray(regex, str, g1, g2) {
     return out;
 }
 
-/* 按分隔符 split，返回指定下标；未指定下标返回整个数组 */
+/* 按分隔符 split，返回指定下标；未指定下标返回整个数组。
+ * 对齐 Java StringUtils.split：index 为负时表示从末尾倒数（array.length + index）。 */
 function split(str, sep, index) {
     if (str === null || str === undefined) return null;
     var arr = String(str).split(sep);
     if (index === undefined) return arr;
-    return (index >= 0 && index < arr.length) ? arr[index] : null;
+    var pos = index;
+    if (pos < 0) pos = arr.length + pos;
+    return (pos >= 0 && pos < arr.length) ? arr[pos] : null;
+}
+
+/* 从字符串中提取第一个完整合法的 JSON 对象/数组（对齐 Java StringUtils.extractJson）。
+ * 用花括号/方括号计数（忽略字符串内的干扰符号），在根级别归零且首尾匹配时返回候选片段。 */
+function extractJson(input) {
+    if (input === null || input === undefined) return null;
+    input = String(input);
+    var start = -1, braceCount = 0, bracketCount = 0, inString = false, prev = 0;
+    for (var i = 0; i < input.length; i++) {
+        var c = input.charAt(i);
+        if (start === -1) {
+            if (c === '{' || c === '[') {
+                start = i;
+                if (c === '{') braceCount++; else bracketCount++;
+            }
+            continue;
+        }
+        if (c === '"' && prev !== '\\') inString = !inString;
+        if (!inString) {
+            if (c === '{') braceCount++;
+            else if (c === '}') braceCount--;
+            else if (c === '[') bracketCount++;
+            else if (c === ']') bracketCount--;
+        }
+        if (braceCount === 0 && bracketCount === 0) {
+            var startChar = input.charAt(start);
+            if ((startChar === '{' && c === '}') || (startChar === '[' && c === ']')) {
+                var candidate = input.substring(start, i + 1);
+                try { JSON.parse(candidate); return candidate; }
+                catch (e) { return null; }
+            }
+        }
+        prev = c;
+    }
+    return null;
 }
 
 /* 从 href 提取 cid（对齐 Java Node.splitHref） */
@@ -362,4 +400,130 @@ function installSource(src) {
     }
     globalThis.SOURCE = src;
     return src;
+}
+
+
+/* 字节数组 ↔ 字符串（UTF-8）辅助 */
+function _strToBytes(str) {
+    if (str === null || str === undefined) return [];
+    var out = [];
+    for (var i = 0; i < str.length; i++) {
+        var c = str.charCodeAt(i);
+        if (c < 0x80) {
+            out.push(c);
+        } else if (c < 0x800) {
+            out.push(0xC0 | (c >> 6), 0x80 | (c & 0x3F));
+        } else if (c < 0xD800 || c >= 0xE000) {
+            out.push(0xE0 | (c >> 12), 0x80 | ((c >> 6) & 0x3F), 0x80 | (c & 0x3F));
+        } else {
+            // 代理对（两个码元组成一个补充平面字符）
+            i++;
+            var c2 = str.charCodeAt(i);
+            var cp = 0x10000 + (((c & 0x3FF) << 10) | (c2 & 0x3FF));
+            out.push(0xF0 | (cp >> 18), 0x80 | ((cp >> 12) & 0x3F),
+                0x80 | ((cp >> 6) & 0x3F), 0x80 | (cp & 0x3F));
+        }
+    }
+    return out;
+}
+
+function _bytesToStr(bytes) {
+    if (!bytes) return '';
+    var out = [];
+    for (var i = 0; i < bytes.length;) {
+        var b = bytes[i];
+        if (b < 0x80) {
+            out.push(String.fromCharCode(b)); i++;
+        } else if (b < 0xE0) {
+            out.push(String.fromCharCode(((b & 0x1F) << 6) | (bytes[i + 1] & 0x3F))); i += 2;
+        } else if (b < 0xF0) {
+            out.push(String.fromCharCode(((b & 0x0F) << 12) | ((bytes[i + 1] & 0x3F) << 6) | (bytes[i + 2] & 0x3F))); i += 3;
+        } else {
+            var cp = ((b & 0x07) << 18) | ((bytes[i + 1] & 0x3F) << 12) | ((bytes[i + 2] & 0x3F) << 6) | (bytes[i + 3] & 0x3F);
+            cp -= 0x10000;
+            out.push(String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF))); i += 4;
+        }
+    }
+    return out.join('');
+}
+
+/* UTF-8 编解码（返回字符串形态的字节序列） */
+function utf8Encode(str) {
+    var bytes = _strToBytes(str);
+    var out = '';
+    for (var i = 0; i < bytes.length; i++) out += String.fromCharCode(bytes[i]);
+    return out;
+}
+function utf8Decode(s) {
+    if (s === null || s === undefined) return '';
+    var bytes = [];
+    for (var i = 0; i < s.length; i++) bytes.push(s.charCodeAt(i));
+    return _bytesToStr(bytes);
+}
+
+/* 字节 ↔ hex 字符串 */
+function bytesToHex(bytes) {
+    var out = '';
+    for (var i = 0; i < bytes.length; i++) {
+        var h = bytes[i].toString(16);
+        out += (h.length === 1 ? '0' : '') + h;
+    }
+    return out;
+}
+function hexToBytes(hex) {
+    hex = String(hex || '').replace(/\s+/g, '');
+    if (hex.length % 2 !== 0) hex = '0' + hex;
+    var out = [];
+    for (var i = 0; i < hex.length; i += 2) {
+        out.push(parseInt(hex.substring(i, i + 2), 16));
+    }
+    return out;
+}
+/* 字符串 → UTF-8 字节的 hex */
+function hexEncode(str) { return bytesToHex(_strToBytes(str)); }
+/* hex → UTF-8 字符串 */
+function hexDecode(hex) { return _bytesToStr(hexToBytes(hex)); }
+
+var Convert = {
+    encodeUtf8: utf8Encode,
+    decodeUtf8: utf8Decode,
+    encodeBase64: function (str) { return base64Encode(str); },
+    decodeBase64: function (str) { return base64Decode(str); },
+    md5: function (str) { return md5(str); },
+    hexEncode: hexEncode,
+    hexDecode: hexDecode,
+    bytesToHex: bytesToHex,
+    hexToBytes: hexToBytes
+};
+
+/* UUID v4 */
+function createUuid() {
+    var s = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+    return s.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0;
+        var v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+/* 随机整数 [min, max]（含两端） */
+function randomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/* 随机浮点数 [min, max) */
+function randomDouble(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+/* 数组/对象实用工具 */
+function isArray(v) { return Object.prototype.toString.call(v) === '[object Array]'; }
+function contains(str, sub) { return str !== null && str !== undefined && String(str).indexOf(sub) >= 0; }
+function startsWith(str, prefix) { return str !== null && str !== undefined && String(str).indexOf(prefix) === 0; }
+function endsWith(str, suffix) {
+    if (str === null || str === undefined) return false;
+    str = String(str);
+    return str.indexOf(suffix, str.length - suffix.length) >= 0;
 }
