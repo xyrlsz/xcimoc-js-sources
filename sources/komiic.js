@@ -3,7 +3,8 @@
 // 说明：原 Java 支持 komiic.com / komiic.cc 双线路自动探测与登录 cookie；
 // JS 版无本地持久化，固定使用 komiic.com，cookie 为空（未登录内容可能受限）。
 
-const baseUrl = 'https://komiic.com';
+// 线路可从设置切换（komiic.com / komiic.cc）
+var baseUrl = (getSetting('line') === 'komiic.cc') ? 'https://komiic.cc' : 'https://komiic.com';
 
 const Q_SEARCH = 'query searchComicAndAuthorQuery($keyword: String!) {\n  searchComicsAndAuthors(keyword: $keyword) {\n    comics {\n      id title status year imageUrl\n      authors { id name __typename }\n      categories { id name __typename }\n      dateUpdated monthViews views favoriteCount lastBookUpdate lastChapterUpdate __typename\n    }\n    authors { id name chName enName wikiLink comicCount views __typename }\n    __typename\n  }\n}';
 
@@ -14,8 +15,10 @@ const Q_CHAPTERS = 'query chapterByComicId($comicId: ID!) {\n  chaptersByComicId
 const Q_IMAGES = 'query imagesByChapterId($chapterId: ID!) {\n  imagesByChapterId(chapterId: $chapterId) {\n    id kid height width __typename\n  }\n}';
 
 // 工具函数（模块级，不暴露为源接口）
+// 宿主 buildRequest 用 optString 读 body，因此必须返回 JSON 字符串；
+// 各 GraphQL 请求需显式 contentType='application/json'。
 function jsonBody(operationName, variables, query) {
-    return { json: { operationName: operationName, variables: variables, query: query } };
+    return JSON.stringify({ operationName: operationName, variables: variables, query: query });
 }
 
 function formatKomiicTime(t) {
@@ -24,6 +27,74 @@ function formatKomiicTime(t) {
     function p(n) { return n < 10 ? '0' + n : '' + n; }
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
         ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+
+// ---- 登录工具 ----
+// 解析 Set-Cookie 响应头数组 → "name=value; name2=value2"（同名保留最后一个，忽略 Path/Domain 等）
+function parseSetCookies(setCookieArr) {
+    var map = {};
+    var order = [];
+    if (!setCookieArr) return '';
+    for (var i = 0; i < setCookieArr.length; i++) {
+        var h = String(setCookieArr[i] || '');
+        if (!h) continue;
+        var nv = h;
+        var idx = h.indexOf(';');
+        if (idx > 0) nv = h.substring(0, idx);
+        nv = nv.trim();
+        var eq = nv.indexOf('=');
+        if (eq > 0) {
+            var k = nv.substring(0, eq).trim();
+            var v = nv.substring(eq + 1).trim();
+            if (k && !(k in map)) order.push(k);
+            map[k] = v;
+        }
+    }
+    var out = [];
+    for (var j = 0; j < order.length; j++) out.push(order[j] + '=' + map[order[j]]);
+    return out.join('; ');
+}
+
+// 宿主登录态中的 cookie
+function loginCookie() {
+    var l = getLogin();
+    if (!l) return '';
+    try { var o = JSON.parse(l); return o.cookie || ''; } catch (e) { return ''; }
+}
+
+// 带登录 cookie 的请求头
+function authHeaders() {
+    var h = { referer: baseUrl + '/' };
+    var c = loginCookie();
+    if (c) h['cookie'] = c;
+    return h;
+}
+
+// 查询剩余可看页数（对齐 Java KomiicUtils.getImageLimit）
+function getImageLimitInfo() {
+    var query = 'query getImageLimit {\n  getImageLimit {\n    limit\n    usage\n    resetInSeconds\n    __typename\n  }\n}';
+    var res = fetch(baseUrl + '/api/query', {
+        method: 'POST',
+        contentType: 'application/json',
+        headers: Object.assign({}, authHeaders(), {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0'
+        }),
+        body: JSON.stringify({ operationName: 'getImageLimit', variables: {}, query: query })
+    });
+    if (res && res.status === 200 && res.body) {
+        try {
+            var data = JSON.parse(res.body).data;
+            if (data && data.getImageLimit) {
+                var limit = data.getImageLimit.limit;
+                var usage = Math.max(data.getImageLimit.usage || 0, 0);
+                var remaining = Math.max(limit - usage, 0);
+                var logged = !!loginCookie();
+                return { success: true, message: (logged ? '已登录剩余可看 ' : '游客剩余可看 ') + remaining + ' 页', remaining: remaining };
+            }
+        } catch (e) { /* ignore */ }
+    }
+    return { success: false, message: res && res.status ? ('查询失败(' + res.status + ')') : '网络错误' };
 }
 
 var SOURCE = installSource(new (class extends MangaSource {
@@ -41,6 +112,8 @@ var SOURCE = installSource(new (class extends MangaSource {
         return {
             url: baseUrl + '/api/query',
             method: 'POST',
+            contentType: 'application/json',
+            headers: authHeaders(),
             body: jsonBody('searchComicAndAuthorQuery', { keyword: keyword }, Q_SEARCH)
         };
     }
@@ -76,6 +149,8 @@ var SOURCE = installSource(new (class extends MangaSource {
         return {
             url: baseUrl + '/api/query',
             method: 'POST',
+            contentType: 'application/json',
+            headers: authHeaders(),
             body: jsonBody('comicById', { comicId: cid }, Q_INFO)
         };
     }
@@ -101,6 +176,8 @@ var SOURCE = installSource(new (class extends MangaSource {
         return {
             url: baseUrl + '/api/query',
             method: 'POST',
+            contentType: 'application/json',
+            headers: authHeaders(),
             body: jsonBody('chapterByComicId', { comicId: cid }, Q_CHAPTERS)
         };
     }
@@ -133,6 +210,8 @@ var SOURCE = installSource(new (class extends MangaSource {
         return {
             url: baseUrl + '/api/query',
             method: 'POST',
+            contentType: 'application/json',
+            headers: authHeaders(),
             body: jsonBody('imagesByChapterId', { chapterId: path }, Q_IMAGES)
         };
     }
@@ -149,7 +228,7 @@ var SOURCE = installSource(new (class extends MangaSource {
                     lazy: false,
                     headers: {
                         referer: format('%s/comic/%s/chapter/%s', baseUrl, chapter.cid, chapter.path),
-                        cookie: '' // 原 Java 有登录 cookie；JS 版为空
+                        cookie: loginCookie()
                     }
                 });
             }
@@ -162,7 +241,61 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getHeader() {
-        return { referer: baseUrl + '/' };
+        return { referer: baseUrl + '/', cookie: loginCookie() };
+    }
+
+    login(params) {
+        var username = (params && params.account) || '';
+        var password = (params && params.password) || '';
+        log('[login] account=' + username + ' hasPassword=' + (password ? 'yes' : 'no'));
+        if (!username || !password) return { success: false, message: '请输入账号和密码' };
+        var res = fetch(baseUrl + '/api/login', {
+            method: 'POST',
+            contentType: 'application/json',
+            headers: {
+                'Referer': baseUrl + '/login',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0'
+            },
+            body: JSON.stringify({ email: username, password: password })
+        });
+        log('[login] http status=' + (res ? res.status : 'null')
+            + ' setCookie=' + ((res && res.setCookie && res.setCookie.length) ? res.setCookie.length : 0));
+        if (res && res.status === 200 && res.setCookie && res.setCookie.length > 0) {
+            var cookie = parseSetCookies(res.setCookie);
+            setLogin(JSON.stringify({ cookie: cookie, username: username, password: password }));
+            log('[login] success, cookie saved len=' + cookie.length);
+            return { success: true, message: '登录成功' };
+        }
+        return { success: false, message: res && res.status ? ('登录失败(' + res.status + ')') : '网络错误' };
+    }
+
+    getLoginState() {
+        var l = getLogin();
+        if (l) {
+            try { var o = JSON.parse(l); return { loggedIn: !!(o.cookie || o.token) }; } catch (e) {}
+        }
+        return { loggedIn: false };
+    }
+
+    logout() {
+        clearLogin();
+    }
+
+    getSettings() {
+        return [
+            { key: 'line', label: '线路', type: 'select', default: 'komiic.com', options: [
+                { label: 'komiic.com', value: 'komiic.com' },
+                { label: 'komiic.cc', value: 'komiic.cc' }
+            ] },
+            { key: 'image_limit', label: '剩余可看页数', type: 'callback', buttonText: '查询剩余额度' }
+        ];
+    }
+
+    onSettingsAction(key) {
+        if (key === 'image_limit') {
+            return getImageLimitInfo();
+        }
+        return { success: false, message: '未知操作' };
     }
 
     getCategories() {
@@ -203,22 +336,28 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getCategoryRequest(format, page) {
+        // 宿主已把 getCategories() 的 format 模板 {"subject":"{subject}","progress":"{progress}",
+        // "order":"{order}","page":"{page}"} 中的命名占位符替换为所选值，这里按名称解析。
         var opts = JSON.parse(format || '{}');
-        var sub = opts.subject ? '"' + opts.subject + '"' : '';
+        var subject = opts.subject || '';
+        var progress = opts.progress || '';
+        var order = opts.order || '';
         var variables = {
-            categoryId: [opts.subject || ''],
+            categoryId: [subject],
             pagination: {
                 limit: 30,
                 offset: (page - 1) * 30,
-                orderBy: opts.order || '',
+                orderBy: order,
                 asc: false,
-                status: opts.progress || ''
+                status: progress
             }
         };
         var query = 'query comicByCategories($categoryId: [ID!]!, $pagination: Pagination!) {\n  comicByCategories(categoryId: $categoryId, pagination: $pagination) {\n    id title status year imageUrl\n    authors { id name __typename }\n    categories { id name __typename }\n    dateUpdated monthViews views favoriteCount lastBookUpdate lastChapterUpdate __typename\n  }\n}';
         return {
             url: baseUrl + '/api/query',
             method: 'POST',
+            contentType: 'application/json',
+            headers: authHeaders(),
             body: jsonBody('comicByCategories', variables, query)
         };
     }

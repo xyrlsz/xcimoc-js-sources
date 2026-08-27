@@ -20,6 +20,21 @@ function _call(name, args) {
     }
 }
 
+/* 打印日志到 Android logcat（tag=JsSource，含源 type）。用于在无法调试 JS 时定位问题。
+ * 源脚本里可直接用 log(...) 或 console.log(...)。 */
+function log(msg) {
+    var type = (typeof __ST !== 'undefined') ? __ST : -1;
+    _call('log', { type: type, data: msg == null ? 'undefined' : String(msg) });
+}
+if (typeof console === 'undefined') {
+    globalThis.console = {
+        log: function () { log(Array.prototype.join.call(arguments, ' ')); },
+        info: function () { log(Array.prototype.join.call(arguments, ' ')); },
+        warn: function () { log('[warn] ' + Array.prototype.join.call(arguments, ' ')); },
+        error: function () { log('[error] ' + Array.prototype.join.call(arguments, ' ')); }
+    };
+}
+
 /* 发起一次宿主 HTTP 请求（同步阻塞）。返回 {status, headers, setCookie, body}。
  * 主要用于登录等需要发起请求并读取响应头/响应体的场景；常规解析请用 getXxxRequest。 */
 function fetch(url, options) {
@@ -69,6 +84,47 @@ function splitHref(str, index) {
     str = str.replace(/[\/.=?]/g, ' ');
     str = str.trim();
     return split(str, /\s+/, index);
+}
+
+/* ---------------- 通用工具（供源脚本调用） ---------------- */
+
+/* 繁体转简体（宿主 OpenCC/JCC 实现） */
+function t2s(str) {
+    return _call('t2s', { data: str == null ? '' : String(str) });
+}
+
+/* URL 编码 / 解码（宿主实现） */
+function urlEncode(str) {
+    return _call('urlencode', { data: str == null ? '' : String(str) });
+}
+function urlDecode(str) {
+    return _call('urldecode', { data: str == null ? '' : String(str) });
+}
+
+/* 时间戳（秒或毫秒均可）→ YYYY-MM-DD；withTime 为真则追加 HH:MM；非法输入返回空串 */
+function formatTimestamp(t, withTime) {
+    if (t === null || t === undefined || isNaN(t) || t <= 0) return '';
+    var v = Number(t);
+    if (v < 100000000000) v *= 1000; // 10 位（秒）→ 毫秒
+    var d = new Date(v);
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    var s = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    if (withTime) s += ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    return s;
+}
+
+/* 从字符串提取首个数字（含负号/小数）；无数字返回 null */
+function getNumber(str) {
+    if (str === null || str === undefined) return null;
+    var m = String(str).match(/-?\d+(\.\d+)?/);
+    return m ? m[0] : null;
+}
+
+/* 全局 substring 助手：等价 String(str).substring(start, end)，end 缺省到末尾。
+ * 注意与 String.prototype.substring（方法调用）并存，互不影响。 */
+function substring(str, start, end) {
+    if (str === null || str === undefined) return '';
+    return String(str).substring(start, end === undefined ? undefined : end);
 }
 
 /* ---------------- 解密 ---------------- */
@@ -250,6 +306,8 @@ MangaSource.prototype.login = function (params) { return null; };
 MangaSource.prototype.getLoginState = function () { return null; };
 MangaSource.prototype.logout = function () {};
 MangaSource.prototype.getSettings = function () { return []; };
+/* 设置按钮动作（如签到）：type 为 callback 的设置项点击时调用，返回 {success, message} */
+MangaSource.prototype.onSettingsAction = function (key) { return null; };
 
 /* 所有可被宿主调用的方法名（也是源脚本需遵守的接口契约） */
 var __SOURCE_METHODS = [
@@ -261,7 +319,7 @@ var __SOURCE_METHODS = [
     'getLazyRequest', 'parseLazy',
     'getCheckRequest', 'parseCheck',
     'getCategories', 'getCategoryRequest', 'parseCategory',
-    'login', 'getLoginState', 'logout', 'getSettings'
+    'login', 'getLoginState', 'logout', 'getSettings', 'onSettingsAction'
 ];
 
 /* 把源实例暴露给宿主：

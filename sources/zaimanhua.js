@@ -5,7 +5,21 @@
 
 const apiBaseUrl = 'https://v4api.zaimanhua.com';
 const pcBaseUrl = 'https://manhua.zaimanhua.com';
-const TOKEN = '';
+
+// ---- 登录工具 ----
+// 从宿主登录态读取 token
+function loginToken() {
+    var l = getLogin();
+    if (!l) return '';
+    try { var o = JSON.parse(l); return o.token || ''; } catch (e) { return ''; }
+}
+// 带 Bearer token 的请求头
+function authHeaders() {
+    var h = { 'User-Agent': 'Dart/3.6 (dart:io)', platform: 'android' };
+    var t = loginToken();
+    if (t) h['authorization'] = 'Bearer ' + t;
+    return h;
+}
 
 // 工具函数（模块级，不暴露为源接口）
 function isFinishText(text) {
@@ -25,7 +39,8 @@ var SOURCE = installSource(new (class extends MangaSource {
     getSearchRequest(keyword, page) {
         if (page !== 1) return null;
         return {
-            url: format('%s/app/v1/search/index?keyword=%s&source=0&page=1&size=24&platform=android&_v=2.2.4&_c=101_01_01_000', apiBaseUrl, keyword)
+            url: format('%s/app/v1/search/index?keyword=%s&source=0&page=1&size=24&platform=android&_v=2.2.4&_c=101_01_01_000', apiBaseUrl, keyword),
+            headers: authHeaders()
         };
     }
 
@@ -53,7 +68,8 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     getInfoRequest(cid) {
         return {
-            url: format('%s/app/v1/comic/detail/%s?_v=2.2.4&platform=android&_v=2.2.4&_c=101_01_01_000', apiBaseUrl, cid)
+            url: format('%s/app/v1/comic/detail/%s?_v=2.2.4&platform=android&_v=2.2.4&_c=101_01_01_000', apiBaseUrl, cid),
+            headers: authHeaders()
         };
     }
 
@@ -99,11 +115,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     getImagesRequest(cid, path) {
         return {
             url: format('%s/app/v1/comic/chapter/%s/%s?platform=android&_v=2.2.4&_c=101_01_01_000', pcBaseUrl, cid, path),
-            headers: {
-                'User-Agent': 'Dart/3.6 (dart:io)',
-                platform: 'android',
-                authorization: 'Bearer ' + TOKEN
-            }
+            headers: authHeaders()
         };
     }
 
@@ -119,10 +131,82 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getHeader() {
-        return {
+        var h = {
             Referer: 'https://manhua.zaimanhua.com/',
             'user-agent': 'Dalvik/2.1.0 (Linux; U; Android 12; SM-N9700 Build/SP1A.210812.016);'
         };
+        var t = loginToken();
+        if (t) h['authorization'] = 'Bearer ' + t;
+        return h;
+    }
+
+    login(params) {
+        var username = (params && params.account) || '';
+        var password = (params && params.password) || '';
+        log('[login] account=' + username + ' hasPassword=' + (password ? 'yes' : 'no'));
+        if (!username || !password) return { success: false, message: '请输入账号和密码' };
+        var passwdMd5 = md5(password);
+        var res = fetch('https://i.zaimanhua.com/lpi/v1/login/passwd?username=' + encodeURIComponent(username) + '&passwd=' + passwdMd5, {
+            method: 'POST',
+            headers: { 'Referer': 'https://i.zaimanhua.com/login' }
+        });
+        log('[login] http status=' + (res ? res.status : 'null') + ' bodyLen=' + ((res && res.body) ? res.body.length : 0));
+        if (res && res.status === 200 && res.body) {
+            try {
+                var json = JSON.parse(res.body);
+                var data = json && json.data;
+                if (data && data.user && data.user.token) {
+                    var user = data.user;
+                    setLogin(JSON.stringify({ token: user.token, uid: String(user.uid), username: username }));
+                    log('[login] success, token saved, uid=' + user.uid);
+                    return { success: true, message: '登录成功' };
+                }
+                log('[login] response no token');
+                return { success: false, message: '登录失败' };
+            } catch (e) {
+                log('[login] parse error: ' + e);
+                return { success: false, message: '登录失败' };
+            }
+        }
+        return { success: false, message: res && res.status ? ('登录失败(' + res.status + ')') : '网络错误' };
+    }
+
+    getLoginState() {
+        var l = getLogin();
+        if (l) {
+            try { var o = JSON.parse(l); return { loggedIn: !!o.token }; } catch (e) {}
+        }
+        return { loggedIn: false };
+    }
+
+    logout() {
+        clearLogin();
+    }
+
+    getSettings() {
+        return [
+            { key: 'auto_sign', label: '自动签到', type: 'bool', default: 'false' },
+            { key: 'sign_in', label: '签到', type: 'callback', buttonText: '立即签到' }
+        ];
+    }
+
+    onSettingsAction(key) {
+        if (key === 'sign_in') {
+            var token = loginToken();
+            if (!token) return { success: false, message: '请先登录' };
+            var res = fetch('https://m.zaimanhua.com/lpi/v1/task/sign_in?_v=15', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Referer': 'https://m.zaimanhua.com/pages/signIn/index?from=app'
+                }
+            });
+            if (res && res.status === 200) {
+                return { success: true, message: '签到成功' };
+            }
+            return { success: false, message: res && res.status ? ('签到失败(' + res.status + ')') : '网络错误' };
+        }
+        return { success: false, message: '未知操作' };
     }
 
     parseCategory(html, page) {
