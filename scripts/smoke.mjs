@@ -13,8 +13,8 @@ import vm from 'node:vm';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const index = JSON.parse(readFileSync(join(ROOT, 'index.json'), 'utf8'));
 
-// 加载主仓库的 SDK（与 App 运行时一致；缺失时降级为不注入）
-const SDK_PATH = join(ROOT, '..', 'XCimoc', 'app', 'src', 'main', 'assets', 'js', 'source_sdk.js');
+// 加载本仓库自带的 SDK（与 App 运行时一致；缺失时降级为不注入）
+const SDK_PATH = join(ROOT, 'source_sdk.js');
 const SDK = existsSync(SDK_PATH) ? readFileSync(SDK_PATH, 'utf8') : '';
 
 function makeSandbox(name) {
@@ -22,28 +22,25 @@ function makeSandbox(name) {
   const sandbox = {
     console,
     hostCall: (method, argsJson) => {
-      const args = JSON.parse(argsJson || '[]');
+      // 与 source_sdk.js 的 _call 保持一致：hostCall 返回 JSON 字符串，SDK 再 JSON.parse
+      const raw = (v) => JSON.stringify(v);
+      let args = {};
+      try { args = JSON.parse(argsJson || '{}'); } catch {}
       switch (method) {
-        case 'urlencode': return encodeURIComponent(args[0] || '');
+        case 'dom': return raw({ id: -1 });                 // DOM 桩：空节点
+        case 'md5': return raw('MD5STUB');
+        case 'lz64': return raw('');
+        case 'base64': return raw('');
+        case 'aes_cbc': return raw('');
+        case 'state':
+        case 'setting':
+        case 'login': return raw(null);
+        case 'urlencode': return raw(encodeURIComponent(args.data || args.value || ''));
         case 'urldecode':
-          try { return decodeURIComponent(args[0] || ''); } catch { return args[0] || ''; }
-        case 'base64encode': return Buffer.from(args[0] || '', 'utf8').toString('base64');
-        case 'base64decode': return Buffer.from(args[0] || '', 'base64').toString('utf8');
-        case 'base64url_decode':
-          return Buffer.from(String(args[0] || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
-        case 'md5': return 'MD5STUB';
-        case 't2s': return args[0] || '';
-        case 'aes_cbc':
-        case 'aes_cbc_raw': return '';
-        case 'set_state': return 'null';
-        case 'get_state': return '""';
-        case 'fetch':
-        case 'dom_selectAll':
-        case 'dom_text':
-        case 'dom_attr':
-          throw new Error('网络/DOM 不应在冒烟测试中被调用: ' + method);
+          try { return raw(decodeURIComponent(args.data || args.value || '')); } catch { return raw(''); }
+        case 't2s': return raw(args.data || args.value || '');
         default:
-          throw new Error('unknown hostCall: ' + method);
+          throw new Error('网络/DOM 不应在冒烟测试中被调用: ' + method);
       }
     },
     fetch: () => { throw new Error('fetch 不应在冒烟测试中被调用'); },
