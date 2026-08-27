@@ -137,17 +137,20 @@ function splitHref(str, index) {
 
 /* ---------------- 通用工具（供源脚本调用） ---------------- */
 
-/* 繁体转简体（宿主 OpenCC/JCC 实现） */
-function t2s(str) {
-    return _call('t2s', { data: str == null ? '' : String(str) });
+/* URL 编码（纯 JS，对齐 java.net.URLEncoder：UTF-8，空格→'+'） */
+function urlEncode(str) {
+    if (str === null || str === undefined) return '';
+    return encodeURIComponent(String(str)).replace(/%20/g, '+');
 }
 
-/* URL 编码 / 解码（宿主实现） */
-function urlEncode(str) {
-    return _call('urlencode', { data: str == null ? '' : String(str) });
-}
+/* URL 解码（纯 JS，对齐 java.net.URLDecoder：'+'→空格，UTF-8） */
 function urlDecode(str) {
-    return _call('urldecode', { data: str == null ? '' : String(str) });
+    if (str === null || str === undefined) return '';
+    try {
+        return decodeURIComponent(String(str).replace(/\+/g, ' '));
+    } catch (e) {
+        return '';
+    }
 }
 
 /* 时间戳（秒或毫秒均可）→ YYYY-MM-DD；withTime 为真则追加 HH:MM；非法输入返回空串 */
@@ -198,33 +201,430 @@ function evalDecryptVar(code, name) {
     return (result === undefined || result === null) ? '' : String(result);
 }
 
-function LZ64Decrypt(str) {
-    return _call('lz64', { data: str });
+/* ---------- 以下均为纯 JS 实现（不依赖宿主），对齐原 JsHost 的语义 ---------- */
+
+/* ---------------- Base64（对齐 Base64Utils：UTF-8、无换行、容忍无 padding） ---------------- */
+
+var _B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/* 字节数组 → 标准 Base64（含 padding，无换行） */
+function _bytesToBase64(bytes) {
+    var out = '';
+    for (var i = 0; i < bytes.length; i += 3) {
+        var b0 = bytes[i], b1 = (i + 1 < bytes.length) ? bytes[i + 1] : 0, b2 = (i + 2 < bytes.length) ? bytes[i + 2] : 0;
+        out += _B64_CHARS.charAt(b0 >> 2);
+        out += _B64_CHARS.charAt(((b0 & 3) << 4) | (b1 >> 4));
+        out += (i + 1 < bytes.length) ? _B64_CHARS.charAt(((b1 & 15) << 2) | (b2 >> 6)) : '=';
+        out += (i + 2 < bytes.length) ? _B64_CHARS.charAt(b2 & 63) : '=';
+    }
+    return out;
 }
 
-function md5(str) {
-    return _call('md5', { data: str });
+/* Base64 → 字节数组；urlSafe 为真时按 base64url（-/_）解码。解码失败返回 null。 */
+function _base64ToBytes(b64, urlSafe) {
+    if (b64 === null || b64 === undefined) return null;
+    var str = String(b64).replace(/[\r\n\t \f]/g, '');
+    if (urlSafe) str = str.replace(/-/g, '+').replace(/_/g, '/');
+    var out = [];
+    var n = str.length;
+    for (var i = 0; i < n; i += 4) {
+        var c0 = _B64_CHARS.indexOf(str.charAt(i));
+        var c1 = _B64_CHARS.indexOf(str.charAt(i + 1));
+        var c2 = (i + 2 < n) ? _B64_CHARS.indexOf(str.charAt(i + 2)) : -1;
+        var c3 = (i + 3 < n) ? _B64_CHARS.indexOf(str.charAt(i + 3)) : -1;
+        if (c0 < 0 || c1 < 0) return null;
+        var b0 = (c0 << 2) | (c1 >> 4);
+        out.push(b0 & 0xff);
+        if (c2 >= 0 && str.charAt(i + 2) !== '=') {
+            var b1 = ((c1 & 15) << 4) | (c2 >> 2);
+            out.push(b1 & 0xff);
+            if (c3 >= 0 && str.charAt(i + 3) !== '=') {
+                var b2 = ((c2 & 3) << 6) | c3;
+                out.push(b2 & 0xff);
+            }
+        }
+    }
+    return out;
 }
 
+/* 字符串 → 标准 Base64（对齐 Base64Utils.encodeToString） */
 function base64Encode(str) {
-    return _call('base64', { op: 'encode', data: str });
+    return _bytesToBase64(_strToBytes(str === null || str === undefined ? '' : String(str)));
 }
 
+/* 标准 Base64 → UTF-8 字符串（对齐 Base64Utils.decodeToString，失败返回 null） */
 function base64Decode(str) {
-    return _call('base64', { op: 'decode', data: str });
+    var bytes = _base64ToBytes(str, false);
+    return bytes === null ? null : _bytesToStr(bytes);
 }
 
+/* base64url → UTF-8 字符串（对齐 Base64Utils.decodeUrlSafeToString，失败返回 null） */
 function base64UrlDecode(str) {
-    return _call('base64', { op: 'url', data: str });
+    var bytes = _base64ToBytes(str, true);
+    return bytes === null ? null : _bytesToStr(bytes);
 }
 
-/* AES-CBC 解密；iv 缺省时使用密文前 16 字节作为 IV */
+/* ---------------- MD5（对齐 HashUtils.MD5：UTF-8，小写 hex） ---------------- */
+
+var _MD5_S = [7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+    5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+    6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21];
+
+var _MD5_K = [0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
+    0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+    0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
+    0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+    0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
+    0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+    0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
+    0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+    0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
+    0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+    0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
+    0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+    0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
+    0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+    0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
+    0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391];
+
+function _md5RotateLeft(x, c) {
+    return ((x << c) | (x >>> (32 - c))) >>> 0;
+}
+
+/* RFC 1321 MD5，输入按 UTF-8 处理，返回小写 hex */
+function md5(str) {
+    var msg = _strToBytes(str === null || str === undefined ? '' : String(str));
+    var bitLenLow = (msg.length << 3) & 0xffffffff;
+    var bitLenHigh = Math.floor(msg.length / 0x20000000);
+    msg.push(0x80);
+    while (msg.length % 64 !== 56) msg.push(0);
+    for (var bi = 0; bi < 4; bi++) msg.push((bitLenLow >>> (8 * bi)) & 0xff);
+    for (var bj = 0; bj < 4; bj++) msg.push((bitLenHigh >>> (8 * bj)) & 0xff);
+
+    var h0 = 0x67452301, h1 = 0xefcdab89, h2 = 0x98badcfe, h3 = 0x10325476;
+    var M = new Array(16);
+    for (var offset = 0; offset < msg.length; offset += 64) {
+        for (var j = 0; j < 16; j++) {
+            M[j] = (msg[offset + j * 4] | (msg[offset + j * 4 + 1] << 8) | (msg[offset + j * 4 + 2] << 16) | (msg[offset + j * 4 + 3] << 24)) >>> 0;
+        }
+        var A = h0, B = h1, C = h2, D = h3;
+        for (var i = 0; i < 64; i++) {
+            var F, g;
+            if (i < 16) { F = (B & C) | (~B & D); g = i; }
+            else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) % 16; }
+            else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) % 16; }
+            else { F = C ^ (B | ~D); g = (7 * i) % 16; }
+            F = (F + A + _MD5_K[i] + M[g]) >>> 0;
+            A = D; D = C; C = B;
+            B = (B + _md5RotateLeft(F, _MD5_S[i])) >>> 0;
+        }
+        h0 = (h0 + A) >>> 0;
+        h1 = (h1 + B) >>> 0;
+        h2 = (h2 + C) >>> 0;
+        h3 = (h3 + D) >>> 0;
+    }
+
+    function wordToHex(v) {
+        var s = '';
+        for (var k = 0; k < 4; k++) {
+            var b = (v >>> (8 * k)) & 0xff;
+            s += (b < 16 ? '0' : '') + b.toString(16);
+        }
+        return s;
+    }
+    return wordToHex(h0) + wordToHex(h1) + wordToHex(h2) + wordToHex(h3);
+}
+
+/* ---------------- LZ-string Base64 解压（对齐 DecryptionUtils.LZ64Decrypt） ---------------- */
+
+var _LZ_BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+var _LZ_BASE64_DICT = null;
+function _lzGetBaseValue(alphabet, c) {
+    if (!_LZ_BASE64_DICT) {
+        _LZ_BASE64_DICT = {};
+        for (var i = 0; i < alphabet.length; i++) _LZ_BASE64_DICT[alphabet.charAt(i)] = i;
+    }
+    return _LZ_BASE64_DICT[c];
+}
+
+function _lzDecompress(length, resetValue, getNextValue) {
+    var dictionary = [], next, enlargeIn = 4, dictSize = 4, numBits = 3, entry = '', result = [];
+    var i, w, bits, resb, maxpower, power, c;
+    var data = { val: getNextValue(0), position: resetValue, index: 1 };
+    for (i = 0; i < 3; i += 1) dictionary[i] = i;
+
+    bits = 0;
+    maxpower = 4;
+    power = 1;
+    while (power !== maxpower) {
+        resb = data.val & data.position;
+        data.position >>= 1;
+        if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+        bits |= (resb > 0 ? 1 : 0) * power;
+        power <<= 1;
+    }
+    switch (next = bits) {
+        case 0:
+            bits = 0; maxpower = 256; power = 1;
+            while (power !== maxpower) {
+                resb = data.val & data.position; data.position >>= 1;
+                if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+                bits |= (resb > 0 ? 1 : 0) * power; power <<= 1;
+            }
+            c = String.fromCharCode(bits); break;
+        case 1:
+            bits = 0; maxpower = 65536; power = 1;
+            while (power !== maxpower) {
+                resb = data.val & data.position; data.position >>= 1;
+                if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+                bits |= (resb > 0 ? 1 : 0) * power; power <<= 1;
+            }
+            c = String.fromCharCode(bits); break;
+        case 2:
+            return '';
+    }
+    dictionary[3] = c;
+    w = c;
+    result.push(c);
+
+    while (true) {
+        if (data.index > length) return '';
+        bits = 0; maxpower = Math.pow(2, numBits); power = 1;
+        while (power !== maxpower) {
+            resb = data.val & data.position; data.position >>= 1;
+            if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+            bits |= (resb > 0 ? 1 : 0) * power; power <<= 1;
+        }
+        switch (c = bits) {
+            case 0:
+                bits = 0; maxpower = 256; power = 1;
+                while (power !== maxpower) {
+                    resb = data.val & data.position; data.position >>= 1;
+                    if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+                    bits |= (resb > 0 ? 1 : 0) * power; power <<= 1;
+                }
+                dictionary[dictSize++] = String.fromCharCode(bits);
+                c = dictSize - 1; enlargeIn--; break;
+            case 1:
+                bits = 0; maxpower = 65536; power = 1;
+                while (power !== maxpower) {
+                    resb = data.val & data.position; data.position >>= 1;
+                    if (data.position === 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+                    bits |= (resb > 0 ? 1 : 0) * power; power <<= 1;
+                }
+                dictionary[dictSize++] = String.fromCharCode(bits);
+                c = dictSize - 1; enlargeIn--; break;
+            case 2:
+                return result.join('');
+        }
+        if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+        if (dictionary[c]) {
+            entry = dictionary[c];
+        } else {
+            if (c === dictSize) entry = w + w.charAt(0);
+            else return '';
+        }
+        result.push(entry);
+        dictionary[dictSize++] = w + entry.charAt(0);
+        enlargeIn--;
+        w = entry;
+        if (enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+    }
+}
+
+/* 对齐 DecryptionUtils.LZ64Decrypt：base64 编码的 LZ-string 压缩串 → 原文 */
+function LZ64Decrypt(str) {
+    if (str === null || str === undefined) return '';
+    if (str === '') return '';
+    return _lzDecompress(str.length, 32, function (index) {
+        return _lzGetBaseValue(_LZ_BASE64, str.charAt(index));
+    });
+}
+
+/* ---------------- AES-CBC / PKCS7（对齐 Javax.Cipher AES/CBC/PKCS7Padding） ---------------- */
+
+var _AES_SBOX = [0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16];
+
+var _AES_RSBOX = [0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
+    0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
+    0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
+    0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49, 0x6d, 0x8b, 0xd1, 0x25,
+    0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16, 0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92,
+    0x6c, 0x70, 0x48, 0x50, 0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
+    0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05, 0xb8, 0xb3, 0x45, 0x06,
+    0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02, 0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b,
+    0x3a, 0x91, 0x11, 0x41, 0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
+    0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8, 0x1c, 0x75, 0xdf, 0x6e,
+    0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89, 0x6f, 0xb7, 0x62, 0x0e, 0xaa, 0x18, 0xbe, 0x1b,
+    0xfc, 0x56, 0x3e, 0x4b, 0xc6, 0xd2, 0x79, 0x20, 0x9a, 0xdb, 0xc0, 0xfe, 0x78, 0xcd, 0x5a, 0xf4,
+    0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59, 0x27, 0x80, 0xec, 0x5f,
+    0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
+    0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
+    0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d];
+
+var _AES_RCON = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
+
+function _aesGmul(a, b) {
+    var p = 0;
+    for (var i = 0; i < 8; i++) {
+        if (b & 1) p ^= a;
+        var hi = a & 0x80;
+        a = (a << 1) & 0xff;
+        if (hi) a ^= 0x1b;
+        b >>= 1;
+    }
+    return p;
+}
+
+/* 密钥扩展：返回 (Nr+1)*4 个 32 位字 */
+function _aesKeyExpansion(key) {
+    var Nk = key.length / 4;
+    var Nr = Nk + 6;
+    var w = new Array((Nr + 1) * 4);
+    var i;
+    for (i = 0; i < Nk; i++) {
+        w[i] = ((key[4 * i] << 24) | (key[4 * i + 1] << 16) | (key[4 * i + 2] << 8) | key[4 * i + 3]) >>> 0;
+    }
+    var rcon = 1;
+    for (i = Nk; i < (Nr + 1) * 4; i++) {
+        var temp = w[i - 1];
+        if (i % Nk === 0) {
+            temp = ((temp << 8) | (temp >>> 24)) >>> 0; // RotWord
+            temp = ((_AES_SBOX[(temp >>> 24) & 0xff] << 24) | (_AES_SBOX[(temp >>> 16) & 0xff] << 16) |
+                (_AES_SBOX[(temp >>> 8) & 0xff] << 8) | _AES_SBOX[temp & 0xff]) >>> 0;
+            temp = (temp ^ (_AES_RCON[rcon++] << 24)) >>> 0;
+        } else if (Nk > 6 && (i % Nk) === 4) {
+            temp = ((_AES_SBOX[(temp >>> 24) & 0xff] << 24) | (_AES_SBOX[(temp >>> 16) & 0xff] << 16) |
+                (_AES_SBOX[(temp >>> 8) & 0xff] << 8) | _AES_SBOX[temp & 0xff]) >>> 0;
+        }
+        w[i] = (w[i - Nk] ^ temp) >>> 0;
+    }
+    return w;
+}
+
+function _aesRoundKey(w, r) {
+    var out = new Array(16);
+    for (var i = 0; i < 4; i++) {
+        var word = w[4 * r + i];
+        out[4 * i] = (word >>> 24) & 0xff;
+        out[4 * i + 1] = (word >>> 16) & 0xff;
+        out[4 * i + 2] = (word >>> 8) & 0xff;
+        out[4 * i + 3] = word & 0xff;
+    }
+    return out;
+}
+
+function _aesAddRoundKey(s, rk) {
+    for (var i = 0; i < 16; i++) s[i] ^= rk[i];
+}
+
+function _aesInvShiftRows(s) {
+    var t;
+    t = s[13]; s[13] = s[9]; s[9] = s[5]; s[5] = s[1]; s[1] = t;
+    t = s[2]; s[2] = s[10]; s[10] = t;
+    t = s[6]; s[6] = s[14]; s[14] = t;
+    t = s[3]; s[3] = s[7]; s[7] = s[11]; s[11] = s[15]; s[15] = t;
+}
+
+function _aesInvSubBytes(s) {
+    for (var i = 0; i < 16; i++) s[i] = _AES_RSBOX[s[i]];
+}
+
+function _aesInvMixColumns(s) {
+    for (var c = 0; c < 4; c++) {
+        var base = 4 * c; // 状态按 s[row + 4*col] 存储，列 c 占 [4c, 4c+3]
+        var a = s[base], b = s[base + 1], d = s[base + 2], e = s[base + 3];
+        s[base] = _aesGmul(a, 14) ^ _aesGmul(b, 11) ^ _aesGmul(d, 13) ^ _aesGmul(e, 9);
+        s[base + 1] = _aesGmul(a, 9) ^ _aesGmul(b, 14) ^ _aesGmul(d, 11) ^ _aesGmul(e, 13);
+        s[base + 2] = _aesGmul(a, 13) ^ _aesGmul(b, 9) ^ _aesGmul(d, 14) ^ _aesGmul(e, 11);
+        s[base + 3] = _aesGmul(a, 11) ^ _aesGmul(b, 13) ^ _aesGmul(d, 9) ^ _aesGmul(e, 14);
+    }
+}
+
+function _aesDecryptBlock(inBlock, w, Nr) {
+    var s = inBlock.slice();
+    var r;
+    _aesAddRoundKey(s, _aesRoundKey(w, Nr));
+    for (r = Nr - 1; r > 0; r--) {
+        _aesInvShiftRows(s);
+        _aesInvSubBytes(s);
+        _aesAddRoundKey(s, _aesRoundKey(w, r));
+        _aesInvMixColumns(s);
+    }
+    _aesInvShiftRows(s);
+    _aesInvSubBytes(s);
+    _aesAddRoundKey(s, _aesRoundKey(w, 0));
+    return s;
+}
+
+/* AES-CBC 解密（key/iv 为 UTF-8 字节），密文长度须为 16 的倍数，PKCS7 去填充 */
+function _aesCbcDecryptBytes(cipherBytes, keyBytes, ivBytes) {
+    if (!cipherBytes || cipherBytes.length === 0 || cipherBytes.length % 16 !== 0) return null;
+    var Nk = keyBytes.length / 4;
+    if (Nk !== 4 && Nk !== 6 && Nk !== 8) return null;
+    var Nr = Nk + 6;
+    var w = _aesKeyExpansion(keyBytes);
+    var out = [];
+    var prev = ivBytes;
+    for (var i = 0; i < cipherBytes.length; i += 16) {
+        var block = cipherBytes.slice(i, i + 16);
+        var dec = _aesDecryptBlock(block, w, Nr);
+        for (var j = 0; j < 16; j++) out.push(dec[j] ^ prev[j]);
+        prev = block;
+    }
+    var pad = out[out.length - 1];
+    if (pad < 1 || pad > 16) return null;
+    for (var k = out.length - pad; k < out.length; k++) {
+        if (out[k] !== pad) return null;
+    }
+    return out.slice(0, out.length - pad);
+}
+
+/* AES-CBC 解密；iv 缺省时使用密文前 16 字节作为 IV（对齐宿主 handleAesCbc） */
 function aesCbcDecrypt(value, key, iv) {
-    return _call('aes_cbc', { value: value, key: key, iv: iv || '', ivPrefix: !iv });
+    if (value === null || value === undefined || key === null || key === undefined) return '';
+    try {
+        var keyBytes = _strToBytes(String(key));
+        if (!iv) {
+            // ivPrefix 模式：密文为 base64，前 16 字节作 IV，其余为密文
+            var all = _base64ToBytes(String(value), false);
+            if (!all || all.length <= 16) return '';
+            var dec = _aesCbcDecryptBytes(all.slice(16), keyBytes, all.slice(0, 16));
+            return dec === null ? '' : _bytesToStr(dec);
+        }
+        var cipherB64 = String(value);
+        // 对齐宿主：hex 密文先转字节再转 base64
+        if (/^[0-9a-fA-F]+$/.test(cipherB64) && cipherB64.length % 2 === 0) {
+            cipherB64 = _bytesToBase64(hexToBytes(cipherB64));
+        }
+        var cipherBytes = _base64ToBytes(cipherB64, false);
+        if (cipherBytes === null) return '';
+        var ivBytes = _strToBytes(String(iv));
+        var d = _aesCbcDecryptBytes(cipherBytes, keyBytes, ivBytes);
+        return d === null ? '' : _bytesToStr(d);
+    } catch (e) {
+        return '';
+    }
 }
 
 function aesCbcDecryptWithIvPrefix(value, key) {
-    return _call('aes_cbc', { value: value, key: key, iv: '', ivPrefix: true });
+    return aesCbcDecrypt(value, key, null);
 }
 
 /* ---------------- DOM 解析 ---------------- */

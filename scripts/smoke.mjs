@@ -28,18 +28,10 @@ function makeSandbox(name) {
       try { args = JSON.parse(argsJson || '{}'); } catch {}
       switch (method) {
         case 'dom': return raw({ id: -1 });                 // DOM 桩：空节点
-        case 'md5': return raw('MD5STUB');
-        case 'lz64': return raw('');
-        case 'base64': return raw('');
-        case 'aes_cbc': return raw('');
         case 'state':
         case 'setting':
         case 'login':
         case 'log': return raw(null);
-        case 'urlencode': return raw(encodeURIComponent(args.data || args.value || ''));
-        case 'urldecode':
-          try { return raw(decodeURIComponent(args.data || args.value || '')); } catch { return raw(''); }
-        case 't2s': return raw(args.data || args.value || '');
         default:
           throw new Error('网络/DOM 不应在冒烟测试中被调用: ' + method);
       }

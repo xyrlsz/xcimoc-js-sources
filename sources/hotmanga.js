@@ -36,7 +36,7 @@ var SOURCE = installSource(new (class extends MangaSource {
             }
             list.push({
                 cid: object.path_word,
-                title: t2s(object.name),
+                title: object.name,
                 cover: object.cover,
                 update: null,
                 author: author

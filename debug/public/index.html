@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XCimoc JS 源调试器</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>🛠 XCimoc 漫画源 JS 调试器</h1>
+  <div class="sub">在 Node 中复刻 App 的 JsHost（DOM/fetch/state/setting/login），本地调用源脚本调试</div>
+</header>
+
+<main class="layout">
+  <!-- 左栏：源 + 流程 + 参数 -->
+  <section class="panel left">
+    <div class="field">
+      <label>漫画源</label>
+      <div class="row">
+        <select id="source"></select>
+        <button id="refresh" title="刷新源列表">↻</button>
+        <button id="viewSource" title="查看源脚本">源码</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>调试流程</label>
+      <div class="tabs" id="tabs"></div>
+    </div>
+
+    <div class="field">
+      <label>参数</label>
+      <div id="form"></div>
+    </div>
+
+    <button id="run" class="primary">▶ 运行</button>
+    <div id="runHint" class="hint"></div>
+
+    <div class="field">
+      <label>调试器日志（log() / console）</label>
+      <pre id="dlogs" class="logbox"></pre>
+    </div>
+  </section>
+
+  <!-- 右栏：结果 -->
+  <section class="panel right">
+    <div id="results">
+      <div class="empty">选择源与流程，点击「运行」查看分步结果。</div>
+    </div>
+  </section>
+</main>
+
+<dialog id="sourceModal">
+  <div class="modal-head">
+    <strong>源脚本</strong>
+    <button id="closeModal">✕</button>
+  </div>
+  <pre id="sourceCode" class="code"></pre>
+</dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

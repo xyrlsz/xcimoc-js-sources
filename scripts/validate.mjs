@@ -13,6 +13,10 @@ import vm from 'node:vm';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REQUIRED_FUNCS = ['getSearchRequest', 'parseSearch', 'getInfoRequest', 'parseInfo', 'getImagesRequest', 'parseImages'];
 
+// 加载本仓库自带 SDK（源脚本基于 MangaSource/installSource，须先注入）
+const SDK_PATH = join(ROOT, 'source_sdk.js');
+const SDK = existsSync(SDK_PATH) ? readFileSync(SDK_PATH, 'utf8') : '';
+
 function loadIndex() {
   return JSON.parse(readFileSync(join(ROOT, 'index.json'), 'utf8'));
 }
@@ -22,12 +26,24 @@ function validateScript(script, name) {
   const sandbox = {
     console,
     SOURCE: undefined,
-    hostCall: () => null,
+    hostCall: (method, argsJson) => {
+      // 仅 stub 仍需宿主的能力；计算类工具（md5/base64/lz64/aes/urlencode）已纯 JS 化
+      let args = {};
+      try { args = JSON.parse(argsJson || '{}'); } catch {}
+      switch (method) {
+        case 'dom': return JSON.stringify({ id: -1 });
+        case 'state':
+        case 'setting':
+        case 'login':
+        case 'log': return 'null';
+        default: return 'null';
+      }
+    },
     fetch: () => { throw new Error('fetch stub'); },
   };
   const ctx = vm.createContext(sandbox);
   try {
-    vm.runInContext(script, ctx, { filename: name });
+    vm.runInContext(SDK + '\n' + script, ctx, { filename: name });
   } catch (e) {
     return [`语法/执行错误: ${e.message}`];
   }

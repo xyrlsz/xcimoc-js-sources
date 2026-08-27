@@ -1,0 +1,17 @@
+{
+  "name": "xcimoc-js-debugger",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "XCimoc 动态漫画源 JS 调试器（本地 WebUI），在 Node 中复刻 App 的 JsHost 能力",
+  "scripts": {
+    "start": "node server.mjs",
+    "postinstall": "node -e \"console.log('依赖安装完成，运行 npm start 启动调试器')\""
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
