@@ -74,31 +74,39 @@ function authHeaders() {
     return h;
 }
 
-// 查询剩余可看页数（对齐 Java KomiicUtils.getImageLimit）
+// 查询剩余可看页数（对齐 Java KomiicUtils.getImageLimit）；线路不通自动回退另一线路
 function getImageLimitInfo() {
     var query = 'query getImageLimit {\n  getImageLimit {\n    limit\n    usage\n    resetInSeconds\n    __typename\n  }\n}';
-    var res = fetch(baseUrl + '/api/query', {
-        method: 'POST',
-        contentType: 'application/json',
-        headers: Object.assign({}, authHeaders(), {
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0'
-        }),
-        body: JSON.stringify({ operationName: 'getImageLimit', variables: {}, query: query })
-    });
-    if (res && res.status === 200 && res.body) {
-        try {
-            var data = JSON.parse(res.body).data;
-            if (data && data.getImageLimit) {
-                var limit = data.getImageLimit.limit;
-                var usage = Math.max(data.getImageLimit.usage || 0, 0);
-                var remaining = Math.max(limit - usage, 0);
-                var logged = !!loginCookie();
-                return { success: true, message: (logged ? '已登录剩余可看 ' : '游客剩余可看 ') + remaining + ' 页', remaining: remaining };
-            }
-        } catch (e) { /* ignore */ }
+    var lines = [baseUrl];
+    var alt = otherBase();
+    if (alt !== baseUrl) lines.push(alt);
+    var lastMsg = '网络错误';
+    for (var i = 0; i < lines.length; i++) {
+        var res = fetch(lines[i] + '/api/query', {
+            method: 'POST',
+            contentType: 'application/json',
+            headers: Object.assign({}, authHeaders(), {
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0'
+            }),
+            body: JSON.stringify({ operationName: 'getImageLimit', variables: {}, query: query })
+        });
+        if (res && res.status === 200 && res.body) {
+            try {
+                var data = JSON.parse(res.body).data;
+                if (data && data.getImageLimit) {
+                    var limit = data.getImageLimit.limit;
+                    var usage = Math.max(data.getImageLimit.usage || 0, 0);
+                    var remaining = Math.max(limit - usage, 0);
+                    var logged = !!loginCookie();
+                    log('[limit] ok on ' + lines[i] + ' remaining=' + remaining);
+                    return { success: true, message: (logged ? '已登录剩余可看 ' : '游客剩余可看 ') + remaining + ' 页', remaining: remaining };
+                }
+            } catch (e) { /* ignore */ }
+        }
+        if (res && res.status) lastMsg = '查询失败(' + res.status + ')';
     }
-    return { success: false, message: res && res.status ? ('查询失败(' + res.status + ')') : '网络错误' };
+    return { success: false, message: lastMsg };
 }
 
 var SOURCE = installSource(new (class extends MangaSource {
