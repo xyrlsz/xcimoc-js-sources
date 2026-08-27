@@ -2,7 +2,7 @@
   "version": 1,
   "sources": [
     { "type": 0, "title": "漫画柜", "version": "1.0.0", "url": "sources/manhuagui.js", "baseUrl": "https://www.manhuagui.com" },
-    { "type": 5, "title": "动漫屋", "version": "1.0.2", "url": "sources/dm5.js", "baseUrl": "https://m.dm5.com" },
+    { "type": 5, "title": "动漫屋", "version": "1.0.3", "url": "sources/dm5.js", "baseUrl": "https://m.dm5.com" },
     { "type": 51, "title": "腾讯动漫", "version": "1.0.0", "url": "sources/tencent.js", "baseUrl": "https://m.ac.qq.com/" },
     { "type": 52, "title": "布卡漫画", "version": "1.0.0", "url": "sources/buka.js", "baseUrl": "https://www.bukamh.com" },
     { "type": 49, "title": "漫画台", "version": "1.0.1", "url": "sources/manhuatai.js", "baseUrl": "https://www.kanman.com" },

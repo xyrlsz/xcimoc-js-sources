@@ -181,9 +181,10 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getCategoryRequest(format, page) {
-        // 对齐原 Java Category.getFormat：把 subject/area/progress/order 之间的连续空白折叠为连字符
-        // （{page} 已被宿主替换为页码）
-        var url = String(format).replace(/\s+/g, '-');
+        // 对齐原 Java Category.getFormat：把 subject/area/progress/order 间的连续空白折叠为连字符，
+        // 并合并多余连字符（{page} 已被宿主替换为页码）
+        var url = String(format).replace(/\s+/g, '-').replace(/-{2,}/g, '-');
+        log('[category] dm5 req url=' + url);
         return { url: url };
     }
 
@@ -191,6 +192,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         var list = [];
         var body = DOM(html);
         var nodes = body.select('ul.mh-list > li > div.mh-item');
+        log('[category] dm5 parse htmlLen=' + (html ? html.length : 0) + ' items=' + nodes.length);
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
             var cover = match('\\((.*?)\\)', node.attr('p.mh-cover', 'style'), 1);
@@ -201,6 +203,7 @@ var SOURCE = installSource(new (class extends MangaSource {
                 author: substring(node.text('p.author'), 3)
             });
         }
+        log('[category] dm5 parsed ' + list.length + ' comics');
         return list;
     }
 
@@ -231,12 +234,12 @@ var SOURCE = installSource(new (class extends MangaSource {
                 { title: '欧美', value: 'area38' }
             ],
             progress: [
-                { title: '全部', value: '' }, { title: '连载', value: 'serial' },
-                { title: '完结', value: 'finished' }
+                { title: '全部', value: '' }, { title: '连载', value: 'st1' },
+                { title: '完结', value: 'st2' }
             ],
             order: [
-                { title: '更新', value: 'update' }, { title: '发布', value: 'index' },
-                { title: '人气', value: 'view' }, { title: '评分', value: 'rate' }
+                { title: '更新', value: 's2' }, { title: '人气', value: '' },
+                { title: '新品上架', value: 's18' }
             ]
         };
     }
