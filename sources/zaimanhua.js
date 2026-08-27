@@ -204,6 +204,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         if (key === 'sign_in') {
             var token = loginToken();
             if (!token) return { success: false, message: '请先登录' };
+            log('[sign] token present len=' + token.length);
             var res = fetch('https://m.zaimanhua.com/lpi/v1/task/sign_in?_v=15', {
                 method: 'POST',
                 headers: {
@@ -211,8 +212,20 @@ var SOURCE = installSource(new (class extends MangaSource {
                     'Referer': 'https://m.zaimanhua.com/pages/signIn/index?from=app'
                 }
             });
+            log('[sign] http status=' + (res ? res.status : 'null')
+                + ' body=' + ((res && res.body) ? res.body.slice(0, 200) : ''));
             if (res && res.status === 200) {
-                return { success: true, message: '签到成功' };
+                // 尝试解析响应体里的提示信息（如已签到/成功）
+                var msg = '签到成功';
+                if (res.body) {
+                    try {
+                        var j = JSON.parse(res.body);
+                        if (j && j.msg) msg = String(j.msg);
+                        else if (j && j.message) msg = String(j.message);
+                        else if (j && j.data && j.data.msg) msg = String(j.data.msg);
+                    } catch (e) { /* ignore */ }
+                }
+                return { success: true, message: msg };
             }
             return { success: false, message: res && res.status ? ('签到失败(' + res.status + ')') : '网络错误' };
         }
