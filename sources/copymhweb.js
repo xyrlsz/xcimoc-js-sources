@@ -14,7 +14,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         super({
             type: 27,
             title: '拷贝漫画Web',
-            baseUrl: 'https://www.copy3000.com',
+            baseUrl: 'https://www.copy4000.com',
             hosts: [
                 'www.mangacopy.com', 'www.copy20.com', 'www.2025copy.com',
                 'www.2026copy.com', 'www.copy3000.com'
