@@ -34,7 +34,8 @@ function makeSandbox(name) {
         case 'aes_cbc': return raw('');
         case 'state':
         case 'setting':
-        case 'login': return raw(null);
+        case 'login':
+        case 'log': return raw(null);
         case 'urlencode': return raw(encodeURIComponent(args.data || args.value || ''));
         case 'urldecode':
           try { return raw(decodeURIComponent(args.data || args.value || '')); } catch { return raw(''); }

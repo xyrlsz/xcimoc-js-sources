@@ -108,13 +108,19 @@ var SOURCE = installSource(new (class extends MangaSource {
                     });
                 }
             }
-        } catch (e) { /* ignore */ }
+            log('[chapter] parsed ' + list.length + ' chapters');
+        } catch (e) {
+            log('[chapter] parse error: ' + e + ' htmlLen=' + (html ? html.length : 0));
+        }
         return list;
     }
 
     getImagesRequest(cid, path) {
+        var url = format('%s/app/v1/comic/chapter/%s/%s?platform=android&_v=2.2.4&_c=101_01_01_000', pcBaseUrl, cid, path);
+        var t = loginToken();
+        log('[images] req cid=' + cid + ' path=' + path + ' hasToken=' + (t ? 'yes' : 'NO'));
         return {
-            url: format('%s/app/v1/comic/chapter/%s/%s?platform=android&_v=2.2.4&_c=101_01_01_000', pcBaseUrl, cid, path),
+            url: url,
             headers: authHeaders()
         };
     }
@@ -126,7 +132,11 @@ var SOURCE = installSource(new (class extends MangaSource {
             for (var i = 0; i < array.length; i++) {
                 list.push({ url: array[i], lazy: false });
             }
-        } catch (e) { /* ignore */ }
+            log('[images] parsed ' + list.length + ' urls, first=' + (list[0] ? list[0].url : 'none')
+                + (list[0] ? ' jsonLen=' + html.length : ''));
+        } catch (e) {
+            log('[images] parse error: ' + e + ' jsonLen=' + (html ? html.length : 0));
+        }
         return list;
     }
 

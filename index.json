@@ -20,7 +20,7 @@
     { "type": 108, "title": "G社漫畫", "version": "1.0.0", "url": "sources/godamanhua.js", "baseUrl": "https://m.g-mh.org" },
     { "type": 110, "title": "vomic漫", "version": "1.0.0", "url": "sources/vomicmh.js", "baseUrl": "https://www.vomicmh.com" },
     { "type": 111, "title": "YY漫画", "version": "1.0.0", "url": "sources/yymanhua.js", "baseUrl": "https://www.yymanhua.com" },
-    { "type": 12, "title": "再漫画", "version": "1.1.0", "url": "sources/zaimanhua.js", "baseUrl": "https://m.zaimanhua.com" },
+    { "type": 12, "title": "再漫画", "version": "1.1.1", "url": "sources/zaimanhua.js", "baseUrl": "https://m.zaimanhua.com" },
     { "type": 113, "title": "漫本", "version": "1.0.0", "url": "sources/manben.js", "baseUrl": "https://www.manben.com" },
     { "type": 114, "title": "古风漫画", "version": "1.0.0", "url": "sources/gfmh.js", "baseUrl": "https://www.gfmh.app" },
     { "type": 115, "title": "漫蛙", "version": "1.0.0", "url": "sources/manwa.js", "baseUrl": "https://manwawang.com" },
