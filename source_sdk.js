@@ -259,6 +259,7 @@ function MangaSource(meta) {
     this.baseUrl = meta.baseUrl;
     this.hosts = meta.hosts || [];
     this.cidRegex = meta.cidRegex || '';
+    this.cidQuery = meta.cidQuery || '';
     this.webConfig = meta.webConfig;
     this.version = meta.version;
 }

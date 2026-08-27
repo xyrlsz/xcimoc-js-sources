@@ -3,8 +3,12 @@
 // 说明：原 Java 支持 komiic.com / komiic.cc 双线路自动探测与登录 cookie；
 // JS 版无本地持久化，固定使用 komiic.com，cookie 为空（未登录内容可能受限）。
 
-// 线路可从设置切换（komiic.com / komiic.cc）
-var baseUrl = (getSetting('line') === 'komiic.cc') ? 'https://komiic.cc' : 'https://komiic.com';
+// 线路可从设置切换（komiic.com / komiic.cc）；网络不通时登录/查询会自动回退另一线路
+var KOMIIC_LINES = ['https://komiic.com', 'https://komiic.cc'];
+var baseUrl = (getSetting('line') === 'komiic.cc') ? KOMIIC_LINES[1] : KOMIIC_LINES[0];
+function otherBase() {
+    return baseUrl === KOMIIC_LINES[0] ? KOMIIC_LINES[1] : KOMIIC_LINES[0];
+}
 
 const Q_SEARCH = 'query searchComicAndAuthorQuery($keyword: String!) {\n  searchComicsAndAuthors(keyword: $keyword) {\n    comics {\n      id title status year imageUrl\n      authors { id name __typename }\n      categories { id name __typename }\n      dateUpdated monthViews views favoriteCount lastBookUpdate lastChapterUpdate __typename\n    }\n    authors { id name chName enName wikiLink comicCount views __typename }\n    __typename\n  }\n}';
 
@@ -103,7 +107,8 @@ var SOURCE = installSource(new (class extends MangaSource {
             type: 106,
             title: 'komiic',
             baseUrl: 'https://komiic.com',
-            hosts: ['komiic.com', 'komiic.cc']
+            hosts: ['komiic.com', 'komiic.cc'],
+            cidRegex: '(\\d+)'
         });
     }
 
@@ -249,24 +254,38 @@ var SOURCE = installSource(new (class extends MangaSource {
         var password = (params && params.password) || '';
         log('[login] account=' + username + ' hasPassword=' + (password ? 'yes' : 'no'));
         if (!username || !password) return { success: false, message: '请输入账号和密码' };
-        var res = fetch(baseUrl + '/api/login', {
-            method: 'POST',
-            contentType: 'application/json',
-            headers: {
-                'Referer': baseUrl + '/login',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0'
-            },
-            body: JSON.stringify({ email: username, password: password })
-        });
-        log('[login] http status=' + (res ? res.status : 'null')
-            + ' setCookie=' + ((res && res.setCookie && res.setCookie.length) ? res.setCookie.length : 0));
-        if (res && res.status === 200 && res.setCookie && res.setCookie.length > 0) {
-            var cookie = parseSetCookies(res.setCookie);
-            setLogin(JSON.stringify({ cookie: cookie, username: username, password: password }));
-            log('[login] success, cookie saved len=' + cookie.length);
-            return { success: true, message: '登录成功' };
+        // 对齐原版 Java：网络失败时自动切换线路重试（komiic.com / komiic.cc）
+        var lines = [baseUrl];
+        var alt = otherBase();
+        if (alt !== baseUrl) lines.push(alt);
+        var lastMsg = '网络错误';
+        for (var i = 0; i < lines.length; i++) {
+            var u = lines[i] + '/api/login';
+            var res = fetch(u, {
+                method: 'POST',
+                contentType: 'application/json',
+                headers: {
+                    'Referer': lines[i] + '/login',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0'
+                },
+                body: JSON.stringify({ email: username, password: password })
+            });
+            log('[login] try ' + lines[i] + ' status=' + (res ? res.status : 'null')
+                + ' setCookie=' + ((res && res.setCookie && res.setCookie.length) ? res.setCookie.length : 0));
+            if (res && res.status === 200 && res.setCookie && res.setCookie.length > 0) {
+                var cookie = parseSetCookies(res.setCookie);
+                setLogin(JSON.stringify({ cookie: cookie, username: username, password: password }));
+                // 记住当前可用线路，后续搜索/详情/图片都走它
+                if (lines[i] !== baseUrl) {
+                    setSetting('line', lines[i] === KOMIIC_LINES[1] ? 'komiic.cc' : 'komiic.com');
+                    log('[login] switched line to ' + lines[i]);
+                }
+                log('[login] success on ' + lines[i] + ', cookie len=' + cookie.length);
+                return { success: true, message: '登录成功' };
+            }
+            if (res && res.status) lastMsg = '登录失败(' + res.status + ')';
         }
-        return { success: false, message: res && res.status ? ('登录失败(' + res.status + ')') : '网络错误' };
+        return { success: false, message: lastMsg };
     }
 
     getLoginState() {

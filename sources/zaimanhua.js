@@ -32,7 +32,8 @@ var SOURCE = installSource(new (class extends MangaSource {
             type: 12,
             title: '再漫画',
             baseUrl: 'https://m.zaimanhua.com',
-            hosts: ['zaimanhua.com']
+            hosts: ['zaimanhua.com'],
+            cidQuery: 'id'
         });
     }
 
