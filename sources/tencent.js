@@ -63,13 +63,15 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     parseInfo(html, cid) {
         var body = DOM(html);
+        // 对齐原 Java：status = !html.contains("连载中")，即页面不含"连载中"视为已完结
+        var finish = html.indexOf('连载中') === -1;
         return {
             title: body.text('div.head-title-tags > h1'),
             cover: body.src('div.head-banner > img'),
             update: '',
             author: body.text('li.author-wr'),
             intro: body.text('div.head-info-desc'),
-            finish: false // 原 Java 写死 isFinish("连载中")
+            finish: finish
         };
     }
 
@@ -84,9 +86,18 @@ var SOURCE = installSource(new (class extends MangaSource {
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
             var href = node.href('a') || '';
+            // 原 Java 剥离 "/chapter/index/id/518333/cid/" 整段只留路径；
+            // 这里按 "/cid/" 定位，兼容不同长度的 cid，避免路径残留 cid 前缀。
+            var path = href;
+            var ci = href.indexOf('/cid/');
+            if (ci >= 0) {
+                path = href.substring(ci + '/cid/'.length);
+            } else if (href.indexOf('/chapter/index/id/') >= 0) {
+                path = href.substring('/chapter/index/id/'.length);
+            }
             list.push({
                 title: node.text('a'),
-                path: href.indexOf('/chapter/index/id/') >= 0 ? href.substring('/chapter/index/id/'.length) : href
+                path: path
             });
         }
         list.reverse();
@@ -142,6 +153,10 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getHeader() {
-        return { Referer: 'https://m.ac.qq.com' };
+        // 对齐原 Java：Referer + user-agent
+        return {
+            Referer: 'https://m.ac.qq.com',
+            'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
+        };
     }
 })());
