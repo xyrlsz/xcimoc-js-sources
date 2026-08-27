@@ -137,7 +137,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         };
     }
 
-    parseImages(html) {
+    parseImages(html, chapterJson) {
         var list = [];
         var str = match('eval\\(.*\\)', html, 0);
         if (!str) return list;
@@ -145,8 +145,14 @@ var SOURCE = installSource(new (class extends MangaSource {
             var result = evalDecryptVar(str, 'newImgs');
             if (!result) result = evalDecrypt(str);
             var array = String(result).split(',');
+            // 对齐原版 Java：每张图带 Referer 防盗链
+            var path = (chapterJson && chapterJson.path) || '';
             for (var i = 0; i < array.length; i++) {
-                list.push({ url: array[i], lazy: false });
+                list.push({
+                    url: array[i],
+                    lazy: false,
+                    headers: { referer: 'https://m.dm5.com/' + path }
+                });
             }
         } catch (e) {
             // ignore
@@ -172,6 +178,13 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     parseCheck(html) {
         return normalizeUpdate(DOM(html).text('#tempc > div.detail-list-title > span.s > span'));
+    }
+
+    getCategoryRequest(format, page) {
+        // 对齐原 Java Category.getFormat：把 subject/area/progress/order 之间的连续空白折叠为连字符
+        // （{page} 已被宿主替换为页码）
+        var url = String(format).replace(/\s+/g, '-');
+        return { url: url };
     }
 
     parseCategory(html, page) {

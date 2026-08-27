@@ -1,8 +1,41 @@
 // 拷贝漫画Web (CopyMHWeb) — 由 Java 源 port
 // 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-const website = 'https://www.copy3000.com';
+// 站点经常更换域名/接口：默认值 + 从设置读取（可持久化，换域名时用「重新探测接口」更新）
+const DEFAULT_WEBSITE = 'https://www.copy4000.com';
+const DEFAULT_SEARCH_API = '/api/kb/web/searchci/comics';
+const CANDIDATE_DOMAINS = [
+    'https://www.copy4000.com',
+    'https://www.copy3000.com',
+    'https://www.2026copy.com',
+    'https://www.2025copy.com',
+    'https://www.copy20.com',
+    'https://www.mangacopy.com'
+];
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0';
-const SEARCH_API = '/api/kb/web/searchci/comics';
+var website = getSetting('website') || DEFAULT_WEBSITE;
+var SEARCH_API = getSetting('search_api') || DEFAULT_SEARCH_API;
+
+// 依次探测候选域名，找到能返回正常搜索结果的接口并持久化
+function probeSearchApi() {
+    for (var i = 0; i < CANDIDATE_DOMAINS.length; i++) {
+        var dom = CANDIDATE_DOMAINS[i];
+        var url = dom + DEFAULT_SEARCH_API + '?offset=0&platform=2&limit=1&q=a&q_type=';
+        try {
+            var res = fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
+            if (res && res.status === 200 && res.body) {
+                var json = JSON.parse(res.body);
+                if (json && json.results && json.results.list) {
+                    setSetting('website', dom);
+                    setSetting('search_api', DEFAULT_SEARCH_API);
+                    website = dom;
+                    log('[copy] probe OK: ' + dom);
+                    return { success: true, message: '接口可用: ' + dom };
+                }
+            }
+        } catch (e) { /* 该域名不通，试下一个 */ }
+    }
+    return { success: false, message: '未探测到可用接口（' + CANDIDATE_DOMAINS.length + ' 个域名均失败）' };
+}
 
 // 工具函数（模块级，不暴露为源接口）
 function isFinishText(text) {
@@ -148,5 +181,18 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     getHeader() {
         return { 'user-agent': UA };
+    }
+
+    getSettings() {
+        return [
+            { key: 'probe', label: '搜索接口', type: 'callback', buttonText: '重新探测接口' }
+        ];
+    }
+
+    onSettingsAction(key) {
+        if (key === 'probe') {
+            return probeSearchApi();
+        }
+        return { success: false, message: '未知操作' };
     }
 })());

@@ -1,8 +1,40 @@
 // 拷贝漫画 (CopyMH) — 由 Java 源 port（CopyMHBase + CopyMH）
 // 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-const website = 'https://www.copy3000.com';
-// 原 Java 会异步探测并持久化 searchApi，这里使用默认值
-const SEARCH_API = '/api/kb/web/searchci/comics';
+// 站点经常更换域名/接口：默认值 + 从设置读取（可持久化，换域名时用「重新探测接口」更新）
+const DEFAULT_WEBSITE = 'https://www.copy4000.com';
+const DEFAULT_SEARCH_API = '/api/kb/web/searchci/comics';
+const CANDIDATE_DOMAINS = [
+    'https://www.copy4000.com',
+    'https://www.copy3000.com',
+    'https://www.2026copy.com',
+    'https://www.2025copy.com',
+    'https://www.copy20.com',
+    'https://www.mangacopy.com'
+];
+var website = getSetting('website') || DEFAULT_WEBSITE;
+var SEARCH_API = getSetting('search_api') || DEFAULT_SEARCH_API;
+
+// 依次探测候选域名，找到能返回正常搜索结果的接口并持久化（对齐原 Java 的 searchApi 探测）
+function probeSearchApi() {
+    for (var i = 0; i < CANDIDATE_DOMAINS.length; i++) {
+        var dom = CANDIDATE_DOMAINS[i];
+        var url = dom + DEFAULT_SEARCH_API + '?offset=0&platform=2&limit=1&q=a&q_type=';
+        try {
+            var res = fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
+            if (res && res.status === 200 && res.body) {
+                var json = JSON.parse(res.body);
+                if (json && json.results && json.results.list) {
+                    setSetting('website', dom);
+                    setSetting('search_api', DEFAULT_SEARCH_API);
+                    website = dom;
+                    log('[copy] probe OK: ' + dom);
+                    return { success: true, message: '接口可用: ' + dom };
+                }
+            }
+        } catch (e) { /* 该域名不通，试下一个 */ }
+    }
+    return { success: false, message: '未探测到可用接口（' + CANDIDATE_DOMAINS.length + ' 个域名均失败）' };
+}
 
 // 工具函数（模块级，不暴露为源接口）
 function isFinishText(text) {
@@ -185,6 +217,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getCategoryRequest(format, page) {
+        log('[category] req page=' + page + ' url=' + format);
         return {
             url: format,
             headers: this.getHeader()
@@ -195,10 +228,14 @@ var SOURCE = installSource(new (class extends MangaSource {
         var list = [];
         var body = DOM(html);
         var target = body.select('div.row.exemptComic-box');
+        log('[category] htmlLen=' + (html ? html.length : 0)
+            + ' exemptComicBox=' + target.length);
         if (target.length) {
             var listAttr = (target[0].attr('list') || '')
                 .replace(/&#x27;/g, '"')
-                .replace(/&quot;/g, '"');
+                .replace(/&quot;/g, '"')
+                .replace(/'/g, '"'); // jsoup 可能已把 &#x27; 解码成单引号，一并转成双引号
+            log('[category] listAttr head=' + listAttr.slice(0, 200));
             try {
                 var array = JSON.parse(listAttr);
                 for (var i = 0; i < array.length; i++) {
@@ -208,7 +245,10 @@ var SOURCE = installSource(new (class extends MangaSource {
                         cover: array[i].cover
                     });
                 }
-            } catch (e) { /* ignore */ }
+                log('[category] parsed ' + list.length + ' comics');
+            } catch (e) {
+                log('[category] list attr parse error: ' + e);
+            }
         }
         return list;
     }
@@ -273,5 +313,18 @@ var SOURCE = installSource(new (class extends MangaSource {
                 { title: '熱度', value: 'popular' }
             ]
         };
+    }
+
+    getSettings() {
+        return [
+            { key: 'probe', label: '搜索接口', type: 'callback', buttonText: '重新探测接口' }
+        ];
+    }
+
+    onSettingsAction(key) {
+        if (key === 'probe') {
+            return probeSearchApi();
+        }
+        return { success: false, message: '未知操作' };
     }
 })());

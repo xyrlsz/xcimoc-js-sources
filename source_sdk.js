@@ -69,6 +69,17 @@ function match(regex, str, group) {
     return m[0];
 }
 
+/* 正则匹配，返回多个指定分组组成的数组（对齐 Java StringUtils.match(..., g1, g2)）；不匹配返回 null */
+function matchArray(regex, str, g1, g2) {
+    if (str === null || str === undefined) return null;
+    var m = new RegExp(regex).exec(String(str));
+    if (!m) return null;
+    var out = [];
+    if (g1 !== undefined && m[g1] !== undefined) out.push(m[g1]);
+    if (g2 !== undefined && m[g2] !== undefined) out.push(m[g2]);
+    return out;
+}
+
 /* 按分隔符 split，返回指定下标；未指定下标返回整个数组 */
 function split(str, sep, index) {
     if (str === null || str === undefined) return null;
@@ -132,6 +143,20 @@ function substring(str, start, end) {
 /* eval 求值 packed 脚本，返回最后表达式的字符串值 */
 function evalDecrypt(code) {
     var result = eval(code);
+    return (result === undefined || result === null) ? '' : String(result);
+}
+
+/* eval 求值 packed 脚本，返回其中指定变量（name）的值（对齐 Java DecryptionUtils.evalDecrypt(code, name)） */
+function evalDecryptVar(code, name) {
+    var result;
+    try {
+        result = eval(code);
+    } catch (e) {
+        return '';
+    }
+    if ((result === undefined || result === null) && name) {
+        try { result = eval(name); } catch (e2) { }
+    }
     return (result === undefined || result === null) ? '' : String(result);
 }
 
