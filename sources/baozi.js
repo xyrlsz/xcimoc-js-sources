@@ -100,6 +100,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         var list = [];
         var body = DOM(html);
         var nodes = body.select('.comic-contain > .chapter-img');
+        log('[images] baozi htmlLen=' + (html ? html.length : 0) + ' nodes=' + nodes.length);
         for (var i = 1; i <= nodes.length; i++) {
             var imgUrl = nodes[i - 1].attr('.comic-contain__item', 'data-src');
             var m = /^(https?:\/\/)?([^\/\s:]+)(:\d+)?(\/[a-z]comic\/.*)/.exec(imgUrl || '');
@@ -108,6 +109,7 @@ var SOURCE = installSource(new (class extends MangaSource {
             }
             list.push({ url: imgUrl, lazy: false });
         }
+        log('[images] baozi parsed ' + list.length + ', first=' + (list[0] ? list[0].url : 'none'));
         return list;
     }
 
@@ -134,8 +136,9 @@ var SOURCE = installSource(new (class extends MangaSource {
                     cover: format('https://%s/cover/%s?w=285&h=375&q=100', 'static-tw.bzmgcn.com', object.topic_img)
                 });
             }
+            log('[category] baozi parsed ' + list.length + ' comics');
         } catch (e) {
-            return list;
+            log('[category] baozi parse error: ' + e + ' jsonLen=' + (html ? html.length : 0));
         }
         return list;
     }

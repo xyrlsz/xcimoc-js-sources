@@ -324,11 +324,11 @@ var SOURCE = installSource(new (class extends MangaSource {
             format: '{"subject":"{subject}","progress":"{progress}","order":"{order}","page":"{page}"}',
             subject: [
                 { title: '全部', value: '' }, { title: '愛情', value: '1' },
-                { title: '神鬼', value: '3' }, { title: '校園', value: '4' },
-                { title: '搞笑', value: '5' }, { title: '生活', value: '6' },
-                { title: '懸疑', value: '7' }, { title: '冒險', value: '8' },
-                { title: '恐怖', value: '9' }, { title: '職場', value: '10' },
-                { title: '魔幻', value: '11' }, { title: '後宮', value: '2' },
+                { title: '後宮', value: '2' }, { title: '神鬼', value: '3' },
+                { title: '校園', value: '4' }, { title: '搞笑', value: '5' },
+                { title: '生活', value: '6' }, { title: '懸疑', value: '7' },
+                { title: '冒險', value: '8' }, { title: '恐怖', value: '9' },
+                { title: '職場', value: '10' }, { title: '魔幻', value: '11' },
                 { title: '魔法', value: '12' }, { title: '格鬥', value: '13' },
                 { title: '宅男', value: '14' }, { title: '勵志', value: '15' },
                 { title: '耽美', value: '16' }, { title: '科幻', value: '17' },
@@ -340,16 +340,37 @@ var SOURCE = installSource(new (class extends MangaSource {
                 { title: '四格', value: '28' }, { title: '社會', value: '31' },
                 { title: '歷史', value: '32' }, { title: '戰爭', value: '33' },
                 { title: '舞蹈', value: '34' }, { title: '武俠', value: '35' },
-                { title: '機戰', value: '36' }
+                { title: '機戰', value: '36' }, { title: '音樂', value: '37' },
+                { title: '體育', value: '40' }, { title: '黑道', value: '42' },
+                { title: '腐女', value: '46' }, { title: '異世界', value: '47' },
+                { title: '驚悚', value: '48' }, { title: '成人', value: '51' },
+                { title: '戰鬥', value: '54' }, { title: '復仇', value: '55' },
+                { title: '轉生', value: '56' }, { title: '黑暗奇幻', value: '57' },
+                { title: '戲劇', value: '58' }, { title: '生存', value: '59' },
+                { title: '策略', value: '60' }, { title: '政治', value: '61' },
+                { title: '黑暗', value: '62' }, { title: '動作', value: '64' },
+                { title: '性轉換', value: '70' }, { title: '日常', value: '78' },
+                { title: '青春', value: '81' }, { title: '醫療', value: '85' },
+                { title: '致鬱', value: '86' }, { title: '心理', value: '87' },
+                { title: '穿越', value: '88' }, { title: '友情', value: '92' },
+                { title: '犯罪', value: '93' }, { title: '劇情', value: '97' },
+                { title: '少女', value: '113' }, { title: '賭博', value: '114' },
+                { title: '女性向', value: '123' }, { title: '溫馨', value: '129' },
+                { title: '同人', value: '164' }, { title: '幻想', value: '183' },
+                { title: '成長', value: '184' }, { title: '心裡', value: '185' },
+                { title: '溫暖', value: '186' }, { title: '戀愛', value: '187' },
+                { title: '奇幻', value: '189' }, { title: '驚愕', value: '204' },
+                { title: '懷疑', value: '214' }, { title: '驚訝', value: '219' },
+                { title: '同性', value: '222' }, { title: '驚奇', value: '223' },
+                { title: '博彩', value: '227' }, { title: '末世', value: '232' }
             ],
             progress: [
-                { title: '全部', value: '' }, { title: '连载中', value: 'ONGOING' },
-                { title: '已完结', value: 'COMPLETED' }, { title: '未开始', value: 'UPCOMING' }
+                { title: '全部', value: '' }, { title: '連載', value: 'ONGOING' },
+                { title: '完結', value: 'END' }
             ],
             order: [
-                { title: '更新', value: '-date_updated' },
-                { title: '人气', value: '-views' },
-                { title: '评分', value: '-rating' }
+                { title: '更新', value: 'DATE_UPDATED' }, { title: '觀看數', value: 'VIEWS' },
+                { title: '喜愛數', value: 'FAVORITE_COUNT' }
             ]
         };
     }
