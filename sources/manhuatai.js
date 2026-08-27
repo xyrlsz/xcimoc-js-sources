@@ -105,51 +105,8 @@ var SOURCE = installSource(new (class extends MangaSource {
         return update ? update.substring(0, 10) : '';
     }
 
-    parseCategory(html, page) {
-        var list = [];
-        var body = DOM(html);
-        var nodes = body.select('a.sdiv');
-        for (var i = 0; i < nodes.length; i++) {
-            var node = nodes[i];
-            var cid = splitHref(node.href(), 0);
-            var cover = '';
-            var imgs = node.select('img');
-            if (imgs.length) cover = imgs[0].attr('data-url');
-            var author = null, update = null;
-            if (!cover || !cid) {
-                // 与 Java 一致：必要时请求详情页补全封面/作者/更新
-                try {
-                    var infoHtml = fetch('https://www.kanman.com/' + cid + '/').body;
-                    var infoBody = DOM(infoHtml);
-                    var c = infoBody.src('#offlinebtn-container > img');
-                    if (c) cover = c;
-                    author = substring(infoBody.text('div.jshtml > ul > li:nth-child(3)'), 3);
-                    update = substring(infoBody.text('div.jshtml > ul > li:nth-child(5)'), 3);
-                } catch (e) { /* ignore */ }
-            }
-            list.push({ cid: cid, title: node.attr('title'), cover: cover, update: update, author: author });
-        }
-        return list;
-    }
-
     getHeader() {
         return { Referer: 'https://www.kanman.com' };
     }
 
-    getCategories() {
-        return {
-            composite: true,
-            format: 'https://www.kanman.com/{subject}_p{page}.html',
-            subject: [
-                { title: '全部漫画', value: 'all' },
-                { title: '知音漫客', value: 'zhiyinmanke' },
-                { title: '神漫', value: 'shenman' },
-                { title: '风炫漫画', value: 'fengxuanmanhua' },
-                { title: '漫画周刊', value: 'manhuazhoukan' },
-                { title: '飒漫乐画', value: 'samanlehua' },
-                { title: '飒漫画', value: 'samanhua' },
-                { title: '漫画世界', value: 'manhuashijie' }
-            ]
-        };
-    }
 })());
