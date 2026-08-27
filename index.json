@@ -15,7 +15,7 @@
     { "type": 101, "title": "包子漫画", "version": "1.0.1", "url": "sources/baozi.js", "baseUrl": "https://www.baozimh.com" },
     { "type": 103, "title": "MYCOMIC", "version": "1.0.0", "url": "sources/mycomic.js", "baseUrl": "https://mycomic.com" },
     { "type": 104, "title": "读漫屋", "version": "1.0.0", "url": "sources/dumanwu.js", "baseUrl": "http://dumanwu1.com" },
-    { "type": 106, "title": "komiic", "version": "1.1.4", "url": "sources/komiic.js", "baseUrl": "https://komiic.com" },
+    { "type": 106, "title": "komiic", "version": "1.1.5", "url": "sources/komiic.js", "baseUrl": "https://komiic.com" },
     { "type": 107, "title": "漫画鱼", "version": "1.0.0", "url": "sources/manhuayu.js", "baseUrl": "https://www.manhuayu88.com" },
     { "type": 108, "title": "G社漫畫", "version": "1.0.0", "url": "sources/godamanhua.js", "baseUrl": "https://m.g-mh.org" },
     { "type": 110, "title": "vomic漫", "version": "1.0.0", "url": "sources/vomicmh.js", "baseUrl": "https://www.vomicmh.com" },

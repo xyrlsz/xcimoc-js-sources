@@ -390,30 +390,42 @@ var SOURCE = installSource(new (class extends MangaSource {
         var subject = opts.subject || '';
         var progress = opts.progress || '';
         var order = opts.order || '';
-        var variables = {
-            categoryId: [subject],
-            pagination: {
-                limit: 30,
-                offset: (page - 1) * 30,
-                orderBy: order,
-                asc: false,
-                status: progress
-            }
+        var pagination = {
+            limit: 30,
+            offset: (page - 1) * 30,
+            orderBy: order,
+            asc: false,
+            status: progress
         };
-        var query = 'query comicByCategories($categoryId: [ID!]!, $pagination: Pagination!) {\n  comicByCategories(categoryId: $categoryId, pagination: $pagination) {\n    id title status year imageUrl\n    authors { id name __typename }\n    categories { id name __typename }\n    dateUpdated monthViews views favoriteCount lastBookUpdate lastChapterUpdate __typename\n  }\n}';
+        // 主题为「全部」(subject='') 时 comicByCategories 传 categoryId:[''] 会因空 ID 报错
+        // (GqlIDToUint: parsing ""), 改用 hotComics（可返回全部并按 orderBy 排序）。
+        var isAll = subject === '';
+        var operation = isAll ? 'hotComics' : 'comicByCategories';
+        var query;
+        var variables;
+        if (isAll) {
+            variables = { pagination: pagination };
+            query = 'query hotComics($pagination: Pagination!) {\n  hotComics(pagination: $pagination) {\n    id title status year imageUrl\n    authors { id name __typename }\n    categories { id name __typename }\n    dateUpdated monthViews views favoriteCount lastBookUpdate lastChapterUpdate __typename\n  }\n}';
+        } else {
+            variables = { categoryId: [subject], pagination: pagination };
+            query = 'query comicByCategories($categoryId: [ID!]!, $pagination: Pagination!) {\n  comicByCategories(categoryId: $categoryId, pagination: $pagination) {\n    id title status year imageUrl\n    authors { id name __typename }\n    categories { id name __typename }\n    dateUpdated monthViews views favoriteCount lastBookUpdate lastChapterUpdate __typename\n  }\n}';
+        }
+        log('[category] ' + operation + ' subject=' + subject + ' order=' + order + ' page=' + page);
         return {
             url: baseUrl + '/api/query',
             method: 'POST',
             contentType: 'application/json',
             headers: authHeaders(),
-            body: jsonBody('comicByCategories', variables, query)
+            body: jsonBody(operation, variables, query)
         };
     }
 
     parseCategory(html, page) {
         var list = [];
         try {
-            var comics = JSON.parse(html).data.comicByCategories;
+            var data = JSON.parse(html).data || {};
+            // 兼容两种返回字段：全部→hotComics，单主题→comicByCategories
+            var comics = data.hotComics || data.comicByCategories || [];
             for (var i = 0; i < comics.length; i++) {
                 list.push({
                     cid: comics[i].id,
