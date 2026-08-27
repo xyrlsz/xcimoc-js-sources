@@ -127,12 +127,17 @@ var SOURCE = installSource(new (class extends MangaSource {
         };
     }
 
-    parseChapter(html, cid) {
+    parseChapter(html, comic) {
         var list = [];
+        // host 传入的第二个参数是 comic 对象 {cid, title}（见 JsMangaParser.parseChapter），
+        // 兼容直接传字符串 cid 的情况。
+        var cid = (comic && typeof comic === 'object') ? (comic.cid || '') : comic;
         var ccz = extractVar(html, 'ccz');
         var dnt = '';
         var dntEls = DOM(html).select('#dnt');
         if (dntEls.length) dnt = dntEls[0].attr('value') || '';
+        log('[copy] parseChapter cid=' + cid + ' ccz=' + (ccz ? ccz.length : 0)
+            + ' dnt=' + (dnt ? dnt.length : 0));
         if (!ccz || !dnt) return list;
         try {
             var headers = this.getHeader();
@@ -140,6 +145,8 @@ var SOURCE = installSource(new (class extends MangaSource {
             headers['Referer'] = website + '/comic/' + cid;
             headers['dnts'] = dnt;
             var resp = fetch(website + '/comicdetail/' + cid + '/chapters?format=json', { headers: headers });
+            log('[copy] chapters resp status=' + (resp && resp.status) + ' len=' + (resp && resp.body ? resp.body.length : 0));
+            if (!resp || resp.status !== 200 || !resp.body) return list;
             var rootObject = JSON.parse(resp.body);
             if (rootObject.code === 200 && rootObject.results) {
                 var encrypted = String(rootObject.results).trim();
@@ -147,6 +154,7 @@ var SOURCE = installSource(new (class extends MangaSource {
                     var ivStr = encrypted.substring(0, 16);
                     var cipherStr = encrypted.substring(16);
                     var plainText = aesCbcDecrypt(cipherStr, ccz, ivStr);
+                    log('[copy] decrypt ok=' + (!!plainText) + ' len=' + (plainText ? plainText.length : 0));
                     if (!plainText) return list;
                     var parsed = JSON.parse(plainText);
                     var groups = parsed.groups || {};
@@ -167,8 +175,9 @@ var SOURCE = installSource(new (class extends MangaSource {
                 }
             }
         } catch (e) {
-            // ignore
+            log('[copy] parseChapter error: ' + e);
         }
+        log('[copy] parsed ' + list.length + ' chapters');
         list.reverse();
         return list;
     }
