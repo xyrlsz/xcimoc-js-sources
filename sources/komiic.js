@@ -220,6 +220,9 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getImagesRequest(cid, path) {
+        // 记住漫画 cid（宿主传入，ReaderPresenter 传的是漫画 cid），
+        // 供 parseImages 拼图片防盗链 Referer：/comic/{漫画cid}/chapter/{章节path}
+        if (cid) setState('cid', String(cid));
         return {
             url: baseUrl + '/api/query',
             method: 'POST',
@@ -237,6 +240,8 @@ var SOURCE = installSource(new (class extends MangaSource {
             try { chapter = JSON.parse(chapter) || {}; } catch (e) { chapter = {}; }
         }
         chapter = chapter || {};
+        // 漫画 cid（getImagesRequest 时已存），兜底用 chapter.cid / chapter.path
+        var comicCid = getState('cid') || chapter.cid || chapter.path || '';
         try {
             var images = JSON.parse(html).data.imagesByChapterId;
             for (var i = 1; i <= images.length; i++) {
@@ -245,7 +250,7 @@ var SOURCE = installSource(new (class extends MangaSource {
                     url: imgUrl,
                     lazy: false,
                     headers: {
-                        referer: format('%s/comic/%s/chapter/%s', baseUrl, chapter.cid, chapter.path),
+                        referer: format('%s/comic/%s/chapter/%s', baseUrl, comicCid, chapter.path || ''),
                         cookie: loginCookie()
                     }
                 });
