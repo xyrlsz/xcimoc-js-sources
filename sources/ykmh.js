@@ -3,6 +3,8 @@
 
 const mHost = 'https://m.ykmh.net/';
 const UA = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
+// 对齐 Java 源 YKMH.imgBaseUrl：图片相对路径拼接的固定兜底域名
+const imgBaseUrl = 'https://fm.haotuyk.top';
 
 // 工具函数（模块级，不暴露为源接口）
 function extractDomainFromPageImage(html) {
@@ -125,15 +127,16 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     parseImages(html) {
         var list = [];
-        var baseDomain = extractDomainFromPageImage(html) || '';
+        // 对齐 Java 源 YKMH.parseImages：优先从 pageImage 动态提取域名，
+        // 失败时回退固定 imgBaseUrl，保证相对路径图片 URL 始终能拼完整
+        var baseDomain = extractDomainFromPageImage(html) || imgBaseUrl;
         var m = /var chapterImages\s*=\s*(\[[\s\S]*?]);/.exec(html);
         if (!m) return list;
         try {
             var array = JSON.parse(m[1]);
             for (var i = 0; i < array.length; i++) {
                 var url = String(array[i]);
-                var urlDomain = extractDomainFromPageImage(url);
-                var fullUrl = urlDomain ? url : resolveUrl(baseDomain, url);
+                var fullUrl = url.indexOf('http') === 0 ? url : resolveUrl(baseDomain, url);
                 list.push({ url: fullUrl, lazy: false });
             }
         } catch (e) {
