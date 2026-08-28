@@ -69,7 +69,8 @@ async function loadSources() {
   SOURCES.forEach((s) => {
     const opt = el('option');
     opt.value = s.url;
-    opt.textContent = `${s.title} (type=${s.type})`;
+    const wv = s.webview ? ' [WebView]' : '';
+    opt.textContent = `${s.title} (type=${s.type})${wv}`;
     sel.appendChild(opt);
   });
   if (SOURCES.length) {
@@ -166,6 +167,25 @@ function pretty(v) {
   try { return JSON.stringify(v, null, 2); } catch (e) { return String(v); }
 }
 
+/** 渲染步骤：把 webview 渲染步骤的元信息展示出来。 */
+function renderWebviewMeta(result) {
+  const info = [];
+  if (result && result.finalUrl) info.push('最终地址: ' + result.finalUrl);
+  if (result && result.ms) info.push('渲染耗时: ' + result.ms + 'ms');
+  if (result && result.cfDetected) {
+    if (result.cfResolved) info.push('✅ Cloudflare 挑战已自动通过');
+    else if (result.cfTimeout) info.push('⚠️ Cloudflare 挑战等待超时（可设 WEBVIEW_HEADFUL=1 人工验证）');
+    else info.push('ℹ️ 检测到 Cloudflare 挑战');
+  }
+  if (!info.length) return null;
+  const wrap = el('div', 'value');
+  wrap.appendChild(el('div', 'value-label', 'WebView 渲染'));
+  const pre = el('pre', 'json');
+  pre.textContent = info.join('\n');
+  wrap.appendChild(pre);
+  return wrap;
+}
+
 function renderStep(step) {
   const card = el('div', 'card');
   const head = el('div', 'card-head');
@@ -179,8 +199,14 @@ function renderStep(step) {
     if (step.stack) card.appendChild(el('pre', 'stack', truncate(step.stack, 1500)));
   }
   if ('result' in step && step.result !== undefined) {
-    const isBody = step.step === 'fetch';
-    card.appendChild(renderValue(isBody ? '响应' : '结果', step.result, true));
+    if (step.step === 'webview') {
+      const meta = renderWebviewMeta(step.result);
+      if (meta) card.appendChild(meta);
+      card.appendChild(renderValue('响应（渲染后 HTML）', step.result.body, true));
+    } else {
+      const isBody = step.step === 'fetch';
+      card.appendChild(renderValue(isBody ? '响应' : '结果', step.result, true));
+    }
   }
   if (step.meta) {
     card.appendChild(renderValue('元数据', step.meta));

@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "XCimoc 动态漫画源 JS 调试器（本地 WebUI），在 Node 中复刻 App 的 JsHost 能力",
+  "description": "XCimoc 动态漫画源 JS 调试器（本地 WebUI），在 Node 中复刻 App 的 JsHost 能力（含 Playwright WebView 渲染 / Cloudflare 认证）",
   "scripts": {
     "start": "node server.mjs",
-    "postinstall": "node -e \"console.log('依赖安装完成，运行 npm start 启动调试器')\""
+    "postinstall": "node -e \"console.log('依赖安装完成，运行 npm start 启动调试器；如需 WebView 渲染请执行 npx playwright install chromium')\""
   },
   "dependencies": {
-    "cheerio": "^1.0.0"
+    "cheerio": "^1.0.0",
+    "playwright": "^1.45.0"
   },
   "engines": {
     "node": ">=18"

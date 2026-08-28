@@ -18,7 +18,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import vm from 'node:vm';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import * as cheerio from 'cheerio';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -67,6 +68,68 @@ function doFetch(req) {
     return JSON.parse(raw);
   } catch (e) {
     return { status: 0, headers: {}, setCookie: [], body: '', error: 'fetch 失败: ' + ((e && e.message) || e) };
+  }
+}
+
+/* ---------------- WebView 渲染（Playwright，复刻 App WebParser） ---------------- */
+let webviewProc = null;
+
+const _require = createRequire(import.meta.url);
+function playwrightAvailable() {
+  try { _require.resolve('playwright'); return true; } catch (e) { return false; }
+}
+
+/** 懒启动常驻 Playwright 渲染服务（webview-server.mjs）。 */
+function ensureWebviewServer() {
+  if (webviewProc) return;
+  const ws = join(__dirname, 'webview-server.mjs');
+  if (!existsSync(ws)) return;
+  try {
+    webviewProc = spawn(process.execPath, [ws], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+      env: { ...process.env },
+    });
+    webviewProc.unref();
+    webviewProc.on('error', (e) => {
+      console.error('[webview] 渲染服务启动失败: ' + ((e && e.message) || e));
+      webviewProc = null;
+    });
+    webviewProc.on('exit', () => { webviewProc = null; });
+  } catch (e) {
+    console.error('[webview] 无法启动渲染服务: ' + ((e && e.message) || e));
+    webviewProc = null;
+  }
+}
+
+/** 同步调用 Playwright 渲染（经 webview-client.mjs 转发到常驻服务）。 */
+function doRender(req) {
+  if (!playwrightAvailable()) {
+    return { status: 0, headers: {}, setCookie: [], body: '', error: '该源需要 WebView 渲染，但未安装 Playwright。请在 debug 目录执行：npm install && npx playwright install chromium' };
+  }
+  ensureWebviewServer();
+  const payload = JSON.stringify({
+    url: req && req.url,
+    method: (req && req.method) || 'GET',
+    headers: (req && req.headers) || {},
+    autoScroll: !!(req && req.autoScroll),
+    handleCloudflare: (req && req.handleCloudflare) !== false,
+    cloudflareTimeoutMs: (req && req.cloudflareTimeoutMs) || 0,
+    interactiveChallenge: !!(req && req.interactiveChallenge),
+  });
+  const client = join(__dirname, 'webview-client.mjs');
+  try {
+    const raw = execFileSync(process.execPath, [client], {
+      input: payload,
+      encoding: 'utf8',
+      windowsHide: true,
+      maxBuffer: 512 * 1024 * 1024,
+      timeout: 300000,
+    });
+    return JSON.parse(raw);
+  } catch (e) {
+    return { status: 0, headers: {}, setCookie: [], body: '', error: '渲染失败: ' + ((e && e.message) || e) };
   }
 }
 
@@ -194,7 +257,7 @@ function runSource(sourceFile, method, args) {
       ok: true,
       result: result === undefined ? null : result,
       logs: ctx.logs,
-      meta: { type: src.type, title: src.title, baseUrl: src.baseUrl, source: sourceFile },
+      meta: { type: src.type, title: src.title, baseUrl: src.baseUrl, source: sourceFile, webConfig: src.webConfig || null },
     };
   } catch (e) {
     return {
@@ -202,9 +265,49 @@ function runSource(sourceFile, method, args) {
       error: (e && e.message) || String(e),
       stack: e && e.stack,
       logs: ctx.logs,
-      meta: { type: src.type, title: src.title, baseUrl: src.baseUrl, source: sourceFile },
+      meta: { type: src.type, title: src.title, baseUrl: src.baseUrl, source: sourceFile, webConfig: src.webConfig || null },
     };
   }
+}
+
+/* 读取某个环节的 webConfig 配置（search/info/chapter/images/lazy/category） */
+function flowWebConfig(meta, flow) {
+  const wc = meta && meta.webConfig;
+  if (!wc) return null;
+  return wc[flow] || null;
+}
+
+/* 按环节配置取响应体：useWebParser=true 走 Playwright 渲染，否则走普通 fetch。 */
+function fetchForStep(cfg, req) {
+  if (!req) return { status: 0, headers: {}, setCookie: [], body: '', error: '无请求' };
+  if (cfg && cfg.useWebParser) {
+    const resp = doRender({
+      url: req.url,
+      method: req.method,
+      headers: req.headers,
+      autoScroll: cfg.autoScroll,
+      handleCloudflare: cfg.handleCloudflare !== false,
+      cloudflareTimeoutMs: cfg.cloudflareTimeoutMs,
+      interactiveChallenge: cfg.interactiveChallenge,
+    });
+    return {
+      ...resp,
+      render: true,
+      result: {
+        url: req.url,
+        status: resp.status,
+        body: resp.body,
+        error: resp.error,
+        finalUrl: resp.finalUrl,
+        cfDetected: resp.cfDetected,
+        cfResolved: resp.cfResolved,
+        cfTimeout: resp.cfTimeout,
+        ms: resp.ms,
+      },
+    };
+  }
+  const resp = doFetch(req);
+  return { ...resp, render: false, result: { url: req.url, status: resp.status, body: resp.body, error: resp.error } };
 }
 
 /* 执行引导流程（模拟 App 的 getXxxRequest → fetch → parseXxx） */
@@ -218,31 +321,31 @@ function executeFlow(sourceFile, flow, params) {
       const page = num(params.page, 1);
       const req = P('getSearchRequest', [kw, page]);
       if (req.ok && req.result) {
-        const resp = doFetch(req.result);
-        steps.push({ step: 'fetch', ok: true, result: { url: req.result.url, status: resp.status, body: resp.body, error: resp.error } });
+        const resp = fetchForStep(flowWebConfig(req.meta, 'search'), req.result);
+        steps.push({ step: resp.render ? 'webview' : 'fetch', ok: true, result: resp.result });
         P('parseSearch', [resp.body, page]);
       }
     } else if (flow === 'info') {
       const cid = params.cid || '';
       const req = P('getInfoRequest', [cid]);
       if (req.ok && req.result) {
-        const resp = doFetch(req.result);
-        steps.push({ step: 'fetch', ok: true, result: { url: req.result.url, status: resp.status, body: resp.body, error: resp.error } });
+        const resp = fetchForStep(flowWebConfig(req.meta, 'info'), req.result);
+        steps.push({ step: resp.render ? 'webview' : 'fetch', ok: true, result: resp.result });
         P('parseInfo', [resp.body, cid]);
       }
     } else if (flow === 'chapter') {
       const cid = params.cid || '';
       const req = P('getChapterRequest', [params.html || '', cid]);
       if (req.ok && req.result) {
-        const resp = doFetch(req.result);
-        steps.push({ step: 'fetch', ok: true, result: { url: req.result.url, status: resp.status, body: resp.body, error: resp.error } });
+        const resp = fetchForStep(flowWebConfig(req.meta, 'chapter'), req.result);
+        steps.push({ step: resp.render ? 'webview' : 'fetch', ok: true, result: resp.result });
         P('parseChapter', [resp.body, params.comicJson || '{}']);
       }
     } else if (flow === 'images') {
       const req = P('getImagesRequest', [params.cid || '', params.path || '']);
       if (req.ok && req.result) {
-        const resp = doFetch(req.result);
-        steps.push({ step: 'fetch', ok: true, result: { url: req.result.url, status: resp.status, body: resp.body, error: resp.error } });
+        const resp = fetchForStep(flowWebConfig(req.meta, 'images'), req.result);
+        steps.push({ step: resp.render ? 'webview' : 'fetch', ok: true, result: resp.result });
         P('parseImages', [resp.body]);
       }
     } else if (flow === 'category') {
@@ -251,8 +354,8 @@ function executeFlow(sourceFile, flow, params) {
         const page = num(params.page, 1);
         const req = P('getCategoryRequest', [params.format || cat.result.format, page]);
         if (req.ok && req.result) {
-          const resp = doFetch(req.result);
-          steps.push({ step: 'fetch', ok: true, result: { url: req.result.url, status: resp.status, body: resp.body, error: resp.error } });
+          const resp = fetchForStep(flowWebConfig(req.meta, 'category'), req.result);
+          steps.push({ step: resp.render ? 'webview' : 'fetch', ok: true, result: resp.result });
           P('parseCategory', [resp.body, page]);
         }
       }
@@ -299,7 +402,18 @@ function createServer() {
       return send(res, 200, readFileSync(f), MIME[extname(f)] || 'application/octet-stream');
     }
     if (p === '/api/sources') {
-      const list = INDEX.sources.map(s => ({ type: s.type, title: s.title, version: s.version, url: s.url }));
+      const list = INDEX.sources.map((s) => {
+        // 轻量判断该源是否声明了 WebView 渲染（读文件匹配 webConfig.useWebParser）
+        let webview = false;
+        try {
+          const f = join(ROOT, s.url);
+          if (existsSync(f)) {
+            const txt = readFileSync(f, 'utf8');
+            webview = /webConfig\s*:\s*\{[^}]*useWebParser\s*:\s*true|useWebParser\s*:\s*true/.test(txt);
+          }
+        } catch (e) { /* 忽略 */ }
+        return { type: s.type, title: s.title, version: s.version, url: s.url, webview };
+      });
       return send(res, 200, safeJson(list));
     }
     if (p === '/api/script') {
