@@ -85,7 +85,12 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     parseImages(html, chapterJson) {
         var list = [];
-        var chapter = JSON.parse(chapterJson || '{}');
+        // chapterJson 可能是 JS 对象（宿主传入）或 JSON 字符串，兼容两种
+        var chapter = chapterJson;
+        if (typeof chapter === 'string') {
+            try { chapter = JSON.parse(chapter) || {}; } catch (e) { chapter = {}; }
+        }
+        chapter = chapter || {};
         var m = /"url"\s*:\s*"(\/[^"]+\.jpg(?:\|\|\|\/[^"]+)*?)"/s.exec(html);
         if (!m) return list;
         var urlValue = m[1];
