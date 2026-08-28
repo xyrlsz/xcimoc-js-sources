@@ -168,7 +168,8 @@ var SOURCE = installSource(new (class extends MangaSource {
                 var data = json && json.data;
                 if (data && data.user && data.user.token) {
                     var user = data.user;
-                    setLogin(JSON.stringify({ token: user.token, uid: String(user.uid), username: username }));
+                    // 存 password 以便登录态失效(401)时 SDK 自动重新登录
+                    setLogin(JSON.stringify({ token: user.token, uid: String(user.uid), username: username, password: password }));
                     log('[login] success, token saved, uid=' + user.uid);
                     return { success: true, message: '登录成功' };
                 }

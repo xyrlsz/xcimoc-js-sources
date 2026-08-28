@@ -68,10 +68,87 @@ function loginCookie() {
 
 // 带登录 cookie 的请求头
 function authHeaders() {
+    // 登录态已过期（cookie 内 JWT 的 exp 已到）→ 先尝试刷新，再返回请求头
+    if (checkExpired()) {
+        refreshLogin();
+    }
     var h = { referer: baseUrl + '/' };
     var c = loginCookie();
     if (c) h['cookie'] = c;
     return h;
+}
+
+// ---- 登录过期检查 / token(cookie 内 JWT) 刷新 / 自动重登（对齐原 Java KomiicUtils） ----
+
+// 从 cookie 中提取 JWT 的 exp（秒）；无 JWT 或解析失败返回 -1
+function getExpFromJwt(cookieStr) {
+    if (!cookieStr) return -1;
+    var m = /([A-Za-z0-9\-_]+)\.([A-Za-z0-9\-_]+)\.([A-Za-z0-9\-_]+)/.exec(cookieStr);
+    if (!m) return -1;
+    try {
+        var payload = base64UrlDecode(m[2]);
+        var obj = JSON.parse(payload);
+        if (obj && obj.exp !== undefined) return Number(obj.exp);
+    } catch (e) { /* ignore */ }
+    return -1;
+}
+
+// ISO 时间字符串 → 秒时间戳（对齐 Java KomiicUtils.toTimestamp）
+function toTimestamp(t) {
+    var d = new Date(t);
+    if (isNaN(d.getTime())) return -1;
+    return Math.floor(d.getTime() / 1000);
+}
+
+// 登录态是否已过期：无 cookie → 过期；JWT exp 已到 → 过期；解析不出 exp → 保守视为未过期
+function checkExpired() {
+    var l = getLogin();
+    if (!l) return true;
+    var o = {};
+    try { o = JSON.parse(l); } catch (e) { return true; }
+    var cookies = o.cookie || '';
+    if (!cookies) return true;
+    var expired = getExpFromJwt(cookies);
+    if (expired === -1) expired = Number(o.exp || -1);
+    if (expired === -1) return false;
+    return Math.floor(Date.now() / 1000) >= expired;
+}
+
+// 用已保存的账号密码自动重新登录；成功返回 true
+function relogin() {
+    var l = getLogin();
+    if (!l) return false;
+    var o = {};
+    try { o = JSON.parse(l); } catch (e) { return false; }
+    var u = o.username || o.account || '';
+    var p = o.password || '';
+    if (!u || !p) return false;
+    var r = SOURCE.login({ account: u, password: p });
+    return !!(r && r.success);
+}
+
+// 刷新 token(cookie)：POST /auth/refresh；失败（401/网络）则回退自动重登
+function refreshLogin() {
+    var cookies = loginCookie();
+    if (!cookies) return false; // 无 cookie 无需刷新
+    var res = fetch(baseUrl + '/auth/refresh', {
+        method: 'POST',
+        contentType: 'application/json',
+        headers: { 'Content-Type': 'application/json', cookie: cookies, Referer: baseUrl + '/' }
+    });
+    if (res && res.status === 200 && res.setCookie && res.setCookie.length) {
+        var newCookie = parseSetCookies(res.setCookie);
+        var exp = getExpFromJwt(newCookie);
+        var cur = {};
+        try { cur = JSON.parse(getLogin()); } catch (e) { /* ignore */ }
+        cur.cookie = newCookie;
+        if (exp !== -1) cur.exp = exp;
+        setLogin(JSON.stringify(cur));
+        log('[komiic] token refreshed, exp=' + exp);
+        return true;
+    }
+    // 刷新失败（401 等）→ 用保存的账号密码自动重登
+    return relogin();
 }
 
 // 查询剩余可看页数（对齐 Java KomiicUtils.getImageLimit）；线路不通自动回退另一线路
@@ -292,13 +369,23 @@ var SOURCE = installSource(new (class extends MangaSource {
                 + ' setCookie=' + ((res && res.setCookie && res.setCookie.length) ? res.setCookie.length : 0));
             if (res && res.status === 200 && res.setCookie && res.setCookie.length > 0) {
                 var cookie = parseSetCookies(res.setCookie);
-                setLogin(JSON.stringify({ cookie: cookie, username: username, password: password }));
+                // 保存 exp（对齐 Java：优先 JWT 的 exp，其次 API 响应的 expire 字段）
+                var exp = getExpFromJwt(cookie);
+                if (exp === -1) {
+                    try {
+                        var loginJson = JSON.parse(res.body);
+                        if (loginJson && loginJson.expire) exp = toTimestamp(loginJson.expire);
+                    } catch (e) { /* ignore */ }
+                }
+                var saved = { cookie: cookie, username: username, password: password };
+                if (exp !== -1) saved.exp = exp;
+                setLogin(JSON.stringify(saved));
                 // 记住当前可用线路，后续搜索/详情/图片都走它
                 if (lines[i] !== baseUrl) {
                     setSetting('line', lines[i] === KOMIIC_LINES[1] ? 'komiic.cc' : 'komiic.com');
                     log('[login] switched line to ' + lines[i]);
                 }
-                log('[login] success on ' + lines[i] + ', cookie len=' + cookie.length);
+                log('[login] success on ' + lines[i] + ', cookie len=' + cookie.length + ' exp=' + exp);
                 return { success: true, message: '登录成功' };
             }
             if (res && res.status) lastMsg = '登录失败(' + res.status + ')';

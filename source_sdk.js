@@ -36,16 +36,68 @@ if (typeof console === 'undefined') {
 }
 
 /* 发起一次宿主 HTTP 请求（同步阻塞）。返回 {status, headers, setCookie, body}。
- * 主要用于登录等需要发起请求并读取响应头/响应体的场景；常规解析请用 getXxxRequest。 */
+ * 主要用于登录等需要发起请求并读取响应头/响应体的场景；常规解析请用 getXxxRequest。
+ *
+ * 内置「登录过期自动重登」：若响应为 401（登录态失效/被服务端拒绝），
+ * 且非登录接口本身、源声明了 login()、本地存有账号密码，则用已保存的凭据
+ * 自动重新登录，并重试该请求一次。 */
 function fetch(url, options) {
     options = options || {};
-    return _call('fetch', {
-        url: url,
-        method: options.method || 'GET',
-        headers: options.headers || {},
-        body: options.body === undefined ? null : options.body,
-        contentType: options.contentType || null
-    });
+    var doReq = function () {
+        return _call('fetch', {
+            url: url,
+            method: options.method || 'GET',
+            headers: options.headers || {},
+            body: options.body === undefined ? null : options.body,
+            contentType: options.contentType || null
+        });
+    };
+    var first = doReq();
+    if (first && first.status === 401 && !__isLoginRequest(url) && tryRelogin()) {
+        log('[fetch] 401 → 已自动重新登录并重试: ' + url);
+        return doReq();
+    }
+    return first;
+}
+
+var __reloginLock = false;
+
+/* 判断是否为登录接口本身（避免对登录请求做 401 自动重登 → 死循环） */
+function __isLoginRequest(url) {
+    return /login|sign_in/i.test(String(url || ''));
+}
+
+/* 从宿主登录态读取已保存的账号密码（兼容 account/username 两种键） */
+function __readCredentials() {
+    try {
+        var l = getLogin();
+        if (!l) return null;
+        var o = JSON.parse(l);
+        var account = o.account || o.username || '';
+        var password = o.password || '';
+        return (account && password) ? { account: account, password: password } : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+/* 用已保存的账号密码自动重新登录；成功返回 true。
+ * 宿主（App 的 JsMangaParser / 调试工具）在收到 401 后也可直接调用本函数。 */
+function tryRelogin() {
+    var src = (typeof globalThis.SOURCE !== 'undefined') ? globalThis.SOURCE : null;
+    var creds = __readCredentials();
+    if (!creds || !src || typeof src.login !== 'function') return false;
+    if (__reloginLock) return false;
+    __reloginLock = true;
+    try {
+        var r = src.login(creds);
+        return !!(r && r.success);
+    } catch (e) {
+        log('[relogin] error: ' + e);
+        return false;
+    } finally {
+        __reloginLock = false;
+    }
 }
 
 /* ---------------- 字符串工具 ---------------- */
