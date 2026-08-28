@@ -866,7 +866,25 @@ MangaSource.prototype.parseLazy = function (html, url) { return null; };
 MangaSource.prototype.getCheckRequest = function (cid) { return null; };
 MangaSource.prototype.parseCheck = function (html) { return null; };
 
-/* ---- 分类 ---- */
+/* ---- 分类 ----
+ * getCategories() 返回的分类定义（宿主据此渲染分类下拉与请求 format）：
+ *   {
+ *     composite: true,                  // true=用 format 模板渲染 URL；false=宿主生成 JSON 参数给 getCategoryRequest
+ *     pageSize: 50,                     // 可选，分页每页条数（默认 20），用于填充 {offset}/{limit}
+ *     format: 'https://…/list-{subject}-{area}-{progress}-{order}-p{page}',
+ *                                       // 含 {subject}/{area}/{reader}/{year}/{progress}/{order}/{page}/{offset}/{limit} 占位符
+ *     allValue: 'all',                  // 可选，「全部」哨兵。值为空串时替换为它，避免后端不接受空值。
+ *                                       //   可为单个字符串（作用于所有维度）或对象 {subject:'all',area:'all',…}（按维度）。
+ *                                       //   不声明则保持空串（后端接受空=全部的源无需声明）。
+ *     subject:  [ {title:'全部',value:'all'}, … ],   // 各维度选项（title=显示名，value=填入 format/请求的值）
+ *     area:     [ … ], reader: [ … ], year: [ … ],
+ *     progress: [ … ], order: [ … ]
+ *   }
+ * 「全部」的兼容性：不同后端对“全部”的表示不同——有的接受空串，有的需要真实占位值
+ * （如 baozi 用 'all'、zaimanhua 用 '0'）。优先直接给「全部」填后端接受的哨兵值；
+ * 若后端不接受空值且无法用固定哨兵表达（如 komiic 的 GraphQL 需换查询），则在
+ * getCategoryRequest 里显式特判空值（见 sources/komiic.js 的 hotComics 分支）。
+ */
 MangaSource.prototype.getCategories = function () { return null; };
 MangaSource.prototype.getCategoryRequest = function (format, page) { return null; };
 MangaSource.prototype.parseCategory = function (html, page) { return []; };
