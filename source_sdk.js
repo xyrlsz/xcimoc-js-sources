@@ -137,14 +137,22 @@ function splitHref(str, index) {
 
 /* ---------------- 通用工具（供源脚本调用） ---------------- */
 
-/* URL 编码（纯 JS，对齐 java.net.URLEncoder：UTF-8，空格→'+'） */
+/* URL 编码（宿主优先，失败回退纯 JS；对齐 java.net.URLEncoder：UTF-8，空格→'+'） */
 function urlEncode(str) {
+    try {
+        var h = _call('urlencode', { data: str === null || str === undefined ? '' : String(str) });
+        if (h !== null && h !== undefined) return h;
+    } catch (e) { }
     if (str === null || str === undefined) return '';
     return encodeURIComponent(String(str)).replace(/%20/g, '+');
 }
 
-/* URL 解码（纯 JS，对齐 java.net.URLDecoder：'+'→空格，UTF-8） */
+/* URL 解码（宿主优先，失败回退纯 JS；对齐 java.net.URLDecoder：'+'→空格，UTF-8） */
 function urlDecode(str) {
+    try {
+        var h = _call('urldecode', { data: str === null || str === undefined ? '' : String(str) });
+        if (h !== null && h !== undefined) return h;
+    } catch (e) { }
     if (str === null || str === undefined) return '';
     try {
         return decodeURIComponent(String(str).replace(/\+/g, ' '));
@@ -247,19 +255,31 @@ function _base64ToBytes(b64, urlSafe) {
     return out;
 }
 
-/* 字符串 → 标准 Base64（对齐 Base64Utils.encodeToString） */
+/* 字符串 → 标准 Base64（宿主优先，失败回退纯 JS，对齐 Base64Utils.encodeToString） */
 function base64Encode(str) {
+    try {
+        var h = _call('base64', { op: 'encode', data: str === null || str === undefined ? '' : String(str) });
+        if (h !== null && h !== undefined) return h;
+    } catch (e) { }
     return _bytesToBase64(_strToBytes(str === null || str === undefined ? '' : String(str)));
 }
 
-/* 标准 Base64 → UTF-8 字符串（对齐 Base64Utils.decodeToString，失败返回 null） */
+/* 标准 Base64 → UTF-8 字符串（宿主优先，失败回退纯 JS，失败返回 null） */
 function base64Decode(str) {
+    try {
+        var h = _call('base64', { op: 'decode', data: str === null || str === undefined ? '' : String(str) });
+        if (h !== null && h !== undefined) return h;
+    } catch (e) { }
     var bytes = _base64ToBytes(str, false);
     return bytes === null ? null : _bytesToStr(bytes);
 }
 
-/* base64url → UTF-8 字符串（对齐 Base64Utils.decodeUrlSafeToString，失败返回 null） */
+/* base64url → UTF-8 字符串（宿主优先，失败回退纯 JS，失败返回 null） */
 function base64UrlDecode(str) {
+    try {
+        var h = _call('base64', { op: 'url', data: str === null || str === undefined ? '' : String(str) });
+        if (h !== null && h !== undefined) return h;
+    } catch (e) { }
     var bytes = _base64ToBytes(str, true);
     return bytes === null ? null : _bytesToStr(bytes);
 }
@@ -292,8 +312,16 @@ function _md5RotateLeft(x, c) {
     return ((x << c) | (x >>> (32 - c))) >>> 0;
 }
 
-/* RFC 1321 MD5，输入按 UTF-8 处理，返回小写 hex */
+/* RFC 1321 MD5，输入按 UTF-8 处理，返回小写 hex（宿主优先，失败回退纯 JS） */
 function md5(str) {
+    try {
+        var h = _call('md5', { data: str === null || str === undefined ? '' : String(str) });
+        if (h !== null && h !== undefined) return h;
+    } catch (e) { }
+    return _md5(str);
+}
+
+function _md5(str) {
     var msg = _strToBytes(str === null || str === undefined ? '' : String(str));
     var bitLenLow = (msg.length << 3) & 0xffffffff;
     var bitLenHigh = Math.floor(msg.length / 0x20000000);
@@ -433,8 +461,16 @@ function _lzDecompress(length, resetValue, getNextValue) {
     }
 }
 
-/* 对齐 DecryptionUtils.LZ64Decrypt：base64 编码的 LZ-string 压缩串 → 原文 */
+/* 对齐 DecryptionUtils.LZ64Decrypt：base64 编码的 LZ-string 压缩串 → 原文（宿主优先，失败回退纯 JS） */
 function LZ64Decrypt(str) {
+    try {
+        var h = _call('lz64', { data: str === null || str === undefined ? '' : String(str) });
+        if (h !== null && h !== undefined) return h;
+    } catch (e) { }
+    return _lz64Decrypt(str);
+}
+
+function _lz64Decrypt(str) {
     if (str === null || str === undefined) return '';
     if (str === '') return '';
     return _lzDecompress(str.length, 32, function (index) {
@@ -596,8 +632,30 @@ function _aesCbcDecryptBytes(cipherBytes, keyBytes, ivBytes) {
     return out.slice(0, out.length - pad);
 }
 
-/* AES-CBC 解密；iv 缺省时使用密文前 16 字节作为 IV（对齐宿主 handleAesCbc） */
+/* AES-CBC 解密（宿主优先，失败回退纯 JS）；iv 缺省时使用密文前 16 字节作为 IV（对齐宿主 handleAesCbc） */
 function aesCbcDecrypt(value, key, iv) {
+    try {
+        var args = { value: value === null || value === undefined ? '' : String(value), key: key === null || key === undefined ? '' : String(key) };
+        if (iv === undefined || iv === null) {
+            args.ivPrefix = true;
+        } else {
+            args.iv = iv;
+        }
+        var h = _call('aes_cbc', args);
+        if (h !== null && h !== undefined) return h;
+    } catch (e) { }
+    return _aesCbcDecrypt(value, key, iv);
+}
+
+function aesCbcDecryptWithIvPrefix(value, key) {
+    try {
+        var h = _call('aes_cbc', { value: value === null || value === undefined ? '' : String(value), key: key === null || key === undefined ? '' : String(key), ivPrefix: true });
+        if (h !== null && h !== undefined) return h;
+    } catch (e) { }
+    return _aesCbcDecryptWithIvPrefix(value, key);
+}
+
+function _aesCbcDecrypt(value, key, iv) {
     if (value === null || value === undefined || key === null || key === undefined) return '';
     try {
         var keyBytes = _strToBytes(String(key));
@@ -623,8 +681,8 @@ function aesCbcDecrypt(value, key, iv) {
     }
 }
 
-function aesCbcDecryptWithIvPrefix(value, key) {
-    return aesCbcDecrypt(value, key, null);
+function _aesCbcDecryptWithIvPrefix(value, key) {
+    return _aesCbcDecrypt(value, key, null);
 }
 
 /* ---------------- DOM 解析 ---------------- */
