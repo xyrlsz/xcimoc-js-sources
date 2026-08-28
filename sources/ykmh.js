@@ -34,6 +34,8 @@ var SOURCE = installSource(new (class extends MangaSource {
             baseUrl: 'https://m.ykmh.net/',
             hosts: ['m.ykmh.net'],
             cidRegex: 'manhua/(\\w.+)',
+            // 默认关闭：全站 Cloudflare，需 WebView 渲染，默认不启用，用户按需开启
+            defaultEnable: false,
             webConfig: {
                 search: { useWebParser: true, autoScroll: false, interactiveChallenge: true },
                 info: { useWebParser: true, autoScroll: false, interactiveChallenge: true },

@@ -783,6 +783,8 @@ function MangaSource(meta) {
     this.cidQuery = meta.cidQuery || '';
     this.webConfig = meta.webConfig;
     this.version = meta.version;
+    // 默认启用状态（缺省为 true）：宿主新增该源时按其默认启/禁用
+    this.defaultEnable = meta.defaultEnable !== undefined ? meta.defaultEnable : true;
 }
 
 /* ---- 元数据 ---- */
