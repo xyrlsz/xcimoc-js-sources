@@ -98,6 +98,15 @@ var SOURCE = installSource(new (class extends MangaSource {
         return { url: format('%s/%s/%s.html', baseUrl, cid, path) };
     }
 
+    // 对齐原 Java getHeader()：图片防盗链需要 referer + user-agent（否则 403）。
+    // 宿主 parseImages 会把此头附加到每个 ImageUrl 上。
+    getHeader() {
+        return {
+            referer: baseUrl + '/',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0'
+        };
+    }
+
     parseImages(html) {
         var list = [];
         var encryptedParams = extractParams(html);
