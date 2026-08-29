@@ -29,9 +29,18 @@ const opts = { method, headers: { ...(req.headers || {}) }, redirect: 'follow' }
 // 有 body 时按内容类型发送（POST/PUT 才带 body，与 App 一致）
 const hasBody = (req.body !== null && req.body !== undefined);
 if ((method === 'POST' || method === 'PUT') && hasBody) {
-  opts.body = req.body;
+  const contentType = (req.contentType || 'application/x-www-form-urlencoded').toLowerCase();
   if (!opts.headers['Content-Type'] && !opts.headers['content-type']) {
-    opts.headers['Content-Type'] = req.contentType || 'application/x-www-form-urlencoded';
+    opts.headers['Content-Type'] = contentType;
+  }
+  // 对象 body：按内容类型编码。Node 原生 fetch 不认纯对象，需显式序列化——
+  // 默认 form-urlencoded（对齐 App 的 FormBody），contentType=json 时转 JSON 字符串。
+  if (typeof req.body === 'object' && req.body !== null && !(req.body instanceof URLSearchParams)) {
+    opts.body = contentType.includes('json')
+      ? JSON.stringify(req.body)
+      : new URLSearchParams(req.body).toString();
+  } else {
+    opts.body = req.body;
   }
 }
 
