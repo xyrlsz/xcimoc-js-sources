@@ -45,17 +45,28 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getSearchRequest(keyword, page) {
+        // 注意：body 必须是表单编码字符串（pagerdata.ashx 期望 application/x-www-form-urlencoded）。
+        // 若传对象，宿主 buildRequest 会用 optString 序列化成 JSON 文本且 content-type 仍是表单，
+        // 服务器解析失败返回空 → parseSearch 的 JSON.parse 报 "Unexpected end of JSON input"。
         return {
             url: 'https://m.dm5.com/pagerdata.ashx',
             method: 'POST',
-            body: { t: '7', pageindex: String(page), title: keyword },
+            body: 't=7&pageindex=' + page + '&title=' + encodeURIComponent(keyword),
             headers: { Referer: 'http://m.dm5.com' }
         };
     }
 
     parseSearch(html, page) {
         var list = [];
-        var array = JSON.parse(html);
+        var array;
+        try {
+            array = JSON.parse(html);
+        } catch (e) {
+            log('[search] dm5 parseSearch: bad json, htmlLen=' + (html ? html.length : 0)
+                + ' head=' + (html ? html.slice(0, 120) : '') + ' err=' + e);
+            return list;
+        }
+        log('[search] dm5 parse htmlLen=' + (html ? html.length : 0) + ' items=' + array.length);
         for (var i = 0; i < array.length; i++) {
             var object = array[i];
             var author = '';
@@ -85,6 +96,7 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     parseInfo(html, cid) {
         var body = DOM(html);
+        log('[info] dm5 parse htmlLen=' + (html ? html.length : 0));
         var titleInfo = (body.text('div.banner_detail_form > div.info > p.title') || '').split(' ');
         var title = '';
         for (var i = 0; i < titleInfo.length - 1; i++) {
