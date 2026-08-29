@@ -56,9 +56,13 @@ var SOURCE = installSource(new (class extends MangaSource {
             webConfig: {
                 info: {
                     useWebParser: true,
+                    autoScroll: false,
                     injectJs: "javascript:(function() { var btns = document.getElementsByClassName('next-all'); for(var i = 0; i < btns.length; i++) { btns[i].click(); } })()"
                 },
-                images: { useWebParser: true }
+                images: {
+                    useWebParser: true,
+                    autoScroll: true
+                }
             }
         });
     }
@@ -146,11 +150,18 @@ var SOURCE = installSource(new (class extends MangaSource {
                 }
             }
         }
+        log('[copy] parseChapter: total=' + list.length + ' chapters');
+        for (var k = 0; k < list.length; k++) {
+            log('[copy] chapter[' + k + '] title=' + list[k].title
+                    + ' path=' + list[k].path + ' group=' + list[k].group);
+        }
         return list;
     }
 
     getImagesRequest(cid, path) {
-        return { url: website + path, headers: this.getHeader() };
+        var url = website + path;
+        log('[copy] getImagesRequest: url=' + url);
+        return { url: url, headers: this.getHeader() };
     }
 
     parseImages(html) {
@@ -165,6 +176,11 @@ var SOURCE = installSource(new (class extends MangaSource {
             if (!imgUrl) continue;
             imgUrl = imgUrl.replace(/c\d+x\.[a-zA-Z]+$/, 'c1500x.webp');
             list.push({ url: imgUrl, lazy: false });
+        }
+        log('[copy] parseImages: nodes=' + nodes.length + ' total=' + list.length + ' images');
+        log('[copy] parseImages: html head=' + (html || '').substring(0, 120));
+        for (var k = 0; k < list.length; k++) {
+            log('[copy] image[' + k + ']=' + list[k].url);
         }
         return list;
     }
