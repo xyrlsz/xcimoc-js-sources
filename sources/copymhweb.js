@@ -160,7 +160,9 @@ var SOURCE = installSource(new (class extends MangaSource {
         for (var i = 1; i <= nodes.length; i++) {
             var imgs = nodes[i - 1].select('img');
             if (!imgs.length) continue;
-            var imgUrl = imgs[0].attr('data-src');
+            // data-src 是懒加载地址，懒加载未触发时可能为 null，回退到 src 并跳过空值
+            var imgUrl = imgs[0].attr('data-src') || imgs[0].attr('src');
+            if (!imgUrl) continue;
             imgUrl = imgUrl.replace(/c\d+x\.[a-zA-Z]+$/, 'c1500x.webp');
             list.push({ url: imgUrl, lazy: false });
         }
