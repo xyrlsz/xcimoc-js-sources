@@ -7,7 +7,8 @@ var SOURCE = installSource(new (class extends MangaSource {
             type: 49,
             title: '漫画台',
             baseUrl: 'https://www.kanman.com',
-            hosts: ['www.kanman.com', 'm.kanman.com']
+            hosts: ['www.kanman.com', 'm.kanman.com'],
+            cidRegex: '(\\d+)'
         });
     }
 
@@ -27,7 +28,8 @@ var SOURCE = installSource(new (class extends MangaSource {
                 cid: String(object.comic_id),
                 title: object.comic_name,
                 cover: 'https://image.yqmh.com/mh/' + object.comic_id + '.jpg-300x400.webp',
-                update: formatTimestamp(object.update_time * 1000),
+                // update_time 本身是毫秒（13 位），不能再 *1000；formatTimestamp 会自动识别秒/毫秒
+                update: formatTimestamp(object.update_time, true),
                 author: object.comic_author
             });
         }
@@ -78,11 +80,11 @@ var SOURCE = installSource(new (class extends MangaSource {
     parseImages(html) {
         var list = [];
         try {
-            var m = new RegExp('window\\.comicInfo\\s*=\\s*\\{.*?current_chapter\\s*:\\s*(\\{.*?\\})(?:,|\\})', 's').exec(html);
-            if (!m) return null;
-            var currChapter = JSON.parse(m[1]);
-            var imgUrl = currChapter.chapter_img_list;
-            var start = currChapter.start_num, end = currChapter.end_num;
+            // 真实页面 window.comicInfo 是 JS 对象字面量（键未加引号、含 !0 等），
+            // JSON.parse 会抛错，故直接提取所需字段；chapter_img_list 本身是合法 JSON 数组。
+            var imgUrl = JSON.parse(match('chapter_img_list\\s*:\\s*(\\[[\\s\\S]*?\\])(?:,|\\})', html, 1) || '[]');
+            var start = parseInt(match('start_num\\s*:\\s*(\\d+)', html, 1), 10);
+            var end = parseInt(match('end_num\\s*:\\s*(\\d+)', html, 1), 10);
             for (var index = start; index <= end; index++) {
                 list.push({ url: imgUrl[index - 1], lazy: false });
             }

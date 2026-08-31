@@ -19,20 +19,28 @@ function decodeData(str, nonce) {
     return str;
 }
 
+// 页面请求公共 header（对齐原 Java 的 getHeader()：Referer + user-agent）
+var PAGE_HEADERS = {
+    Referer: 'https://m.ac.qq.com',
+    'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
+};
+
 var SOURCE = installSource(new (class extends MangaSource {
     constructor() {
         super({
             type: 51,
             title: '腾讯动漫',
             baseUrl: 'https://m.ac.qq.com/',
-            hosts: ['ac.qq.com', 'm.ac.qq.com']
+            hosts: ['ac.qq.com', 'm.ac.qq.com'],
+            // 对齐原 Java 的 UrlFilter("ac.qq.com") 默认正则 (\\d+)：cid 为链接中的数字 id
+            cidRegex: '(\\d+)'
         });
     }
 
     getSearchRequest(keyword, page) {
         if (page !== 1) return null;
         // 修正原 Java 的 %s 未替换 bug
-        return { url: 'https://m.ac.qq.com/search/result?word=' + keyword };
+        return { url: 'https://m.ac.qq.com/search/result?word=' + keyword, headers: PAGE_HEADERS };
     }
 
     parseSearch(html, page) {
@@ -58,7 +66,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getInfoRequest(cid) {
-        return { url: 'https://m.ac.qq.com/comic/index/id/' + cid };
+        return { url: 'https://m.ac.qq.com/comic/index/id/' + cid, headers: PAGE_HEADERS };
     }
 
     parseInfo(html, cid) {
@@ -76,7 +84,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getChapterRequest(html, cid) {
-        return { url: 'https://m.ac.qq.com/comic/chapterList/id/' + cid };
+        return { url: 'https://m.ac.qq.com/comic/chapterList/id/' + cid, headers: PAGE_HEADERS };
     }
 
     parseChapter(html) {
@@ -105,7 +113,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getImagesRequest(cid, path) {
-        return { url: format('https://m.ac.qq.com/chapter/index/id/%s/cid/%s', cid, path) };
+        return { url: format('https://m.ac.qq.com/chapter/index/id/%s/cid/%s', cid, path), headers: PAGE_HEADERS };
     }
 
     parseImages(html) {
@@ -154,9 +162,6 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     getHeader() {
         // 对齐原 Java：Referer + user-agent
-        return {
-            Referer: 'https://m.ac.qq.com',
-            'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
-        };
+        return PAGE_HEADERS;
     }
 })());

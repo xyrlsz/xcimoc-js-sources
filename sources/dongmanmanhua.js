@@ -1,9 +1,6 @@
 // 咚漫漫画 (DongManManHua) — 由 Java 源 port
 // 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
 
-// cid 来自查询参数 title_no（原 UrlFilterWithCidQueryKey）
-const SOURCE_CID_QUERY_KEY = 'title_no';
-
 // 工具函数（模块级，不暴露为源接口）
 function isFinishText(text) {
     return text !== null && (text.indexOf('完结') >= 0 || text.indexOf('Completed') >= 0 || text.indexOf('完結') >= 0);
@@ -25,7 +22,8 @@ var SOURCE = installSource(new (class extends MangaSource {
             type: 11,
             title: '咚漫漫画',
             baseUrl: 'https://www.dongmanmanhua.cn',
-            hosts: ['www.dongmanmanhua.cn']
+            hosts: ['www.dongmanmanhua.cn'],
+            cidQuery: 'title_no'
         });
     }
 
@@ -76,6 +74,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     parseChapter(html, comicJson) {
         var list = [];
         var visited = {};
+        var baseUrl = this.baseUrl;
         function walk(pageHtml, pageUrl) {
             if (visited[pageUrl]) return;
             visited[pageUrl] = true;
@@ -89,7 +88,7 @@ var SOURCE = installSource(new (class extends MangaSource {
                 if (href === '#' && cls === '') {
                     continue; // 当前页已解析
                 } else if (cls === '' || cls === 'pg_next') {
-                    url = this.baseUrl + href;
+                    url = baseUrl + href;
                 }
                 if (url && !visited[url]) {
                     try {

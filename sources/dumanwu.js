@@ -9,6 +9,7 @@ var SOURCE = installSource(new (class extends MangaSource {
             title: '读漫屋',
             baseUrl: 'http://dumanwu1.com',
             hosts: ['dumanwu.com', 'dumanwu1.com'],
+            cidRegex: '(.*)',
             webConfig: {
                 images: { useWebParser: true }
             }
