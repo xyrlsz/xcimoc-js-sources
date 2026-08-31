@@ -18,14 +18,13 @@ xcimoc-js-sources/
 
 ## 在 App 中使用（GitHub raw API）
 
-1. 把本仓库推送到 GitHub（默认分支为 `main`），例如 `https://github.com/<你的用户名>/xcimoc-js-sources`
-2. 在 App「源管理」页右上角菜单中：
+1. 在 App「源管理」页右上角菜单中：
    - **源仓库地址**：填入 GitHub raw 根地址
      ```
-     https://raw.githubusercontent.com/<你的用户名>/xcimoc-js-sources/main
+     https://raw.githubusercontent.com/xyrlsz/xcimoc-js-sources/main
      ```
    - **更新源**：客户端会请求 `…/main/index.json` 与各源脚本，校验后入库
-3. 安装后源列表中会出现这些 JS 源；与内置源同 `type` 的 JS 源启用后**覆盖**内置实现
+2. 安装后源列表中会出现这些 JS 源；与内置源同 `type` 的 JS 源启用后**覆盖**内置实现
 
 > 私有仓库无法通过 raw API 匿名访问；请使用公开仓库。
 
@@ -45,20 +44,10 @@ xcimoc-js-sources/
    ```
 3. 提交并推送
 
-> `type` 必须唯一且 >0（避免与内置源冲突）。已启用源里 type 为
-> 0/5/11/12/26/27/49/51/52/82/91/101/102/103/104/106/107/108/110/111/113/114/115/116/117/118/119。
+> `type` 必须唯一且 >0，并且要避免与其他源冲突。 
 
 ## 本地校验脚本
 
 ```bash
 node scripts/validate.mjs   # 校验 index.json 与所有脚本的 SOURCE 元数据/必需函数
 ```
-
-## 注意事项（部分源的限制）
-
-- **vomic漫 / 再漫画 / komiic**：原 Java 源需要登录 cookie/token（存于 App 本地
-  SharedPreferences）；JS 版无登录入口，图片可能受限。
-- **拷贝漫画 / 拷贝漫画Web / 热辣漫画 / 漫画鱼 / 读漫屋app / G社漫畫**：已内置
-  AES-CBC / MD5 / 自定义解密，App 端 `JsHost` 需为较新版本（含 `aes_cbc` 等宿主能力）。
-- **优酷漫画 / MYCOMIC / 拷贝漫画Web / 布卡漫画 / 漫画屋 / 漫蛙 / 漫本 / 古风漫画 /
-  读漫屋 / 读漫屋app**：部分环节需 WebView 渲染（`webConfig.useWebParser`），由 App 自动处理。
