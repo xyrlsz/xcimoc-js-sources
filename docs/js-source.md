@@ -99,6 +99,7 @@ getCategoryRequest(format, page) {
 - `setState(key,val)` / `getState(key)`：跨调用保存数据（无跨调用状态的引擎每次新建）。
 - `setSetting(key,val)` / `getSetting(key)`：源设置（配合 `getSettings()`）。
 - `setLogin(json)` / `getLogin()` / `clearLogin()`、`login(params)`、`getLoginState()`：登录态。
+- `getRegisterUrl()`：可选，返回注册页 URL 字符串；宿主的登录对话框据此显示「注册」按钮并打开该链接。
 - `fetch(url, options)`：同步 HTTP，返回 `{ status, headers, setCookie, body }`（读响应头/体用）。
 
 ---

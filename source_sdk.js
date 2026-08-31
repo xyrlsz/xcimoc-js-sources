@@ -35,6 +35,11 @@ if (typeof console === 'undefined') {
     };
 }
 
+/* 显示一条 Toast 提示（宿主 HintUtils.showToast，自动切主线程）。用于给用户可见的即时反馈。 */
+function showToast(msg) {
+    _call('toast', { data: msg === null || msg === undefined ? '' : String(msg) });
+}
+
 /* 发起一次宿主 HTTP 请求（同步阻塞）。返回 {status, headers, setCookie, body}。
  * 主要用于登录等需要发起请求并读取响应头/响应体的场景；常规解析请用 getXxxRequest。
  *
@@ -902,6 +907,8 @@ MangaSource.prototype.logout = function () {};
 MangaSource.prototype.getSettings = function () { return []; };
 /* 设置按钮动作（如签到）：type 为 callback 的设置项点击时调用，返回 {success, message} */
 MangaSource.prototype.onSettingsAction = function (key) { return null; };
+/* 注册链接（可选）：返回注册页 URL 字符串，供登录对话框「注册」按钮打开；不返回（null）则不显示注册按钮 */
+MangaSource.prototype.getRegisterUrl = function () { return null; };
 
 /* 所有可被宿主调用的方法名（也是源脚本需遵守的接口契约） */
 var __SOURCE_METHODS = [
@@ -913,7 +920,8 @@ var __SOURCE_METHODS = [
     'getLazyRequest', 'parseLazy',
     'getCheckRequest', 'parseCheck',
     'getCategories', 'getCategoryRequest', 'parseCategory',
-    'login', 'getLoginState', 'logout', 'getSettings', 'onSettingsAction'
+    'login', 'getLoginState', 'logout', 'getSettings', 'onSettingsAction',
+    'getRegisterUrl'
 ];
 
 /* 把源实例暴露给宿主：

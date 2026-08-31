@@ -300,6 +300,10 @@ var SOURCE = installSource(new (class extends MangaSource {
         // 记住漫画 cid（宿主传入，ReaderPresenter 传的是漫画 cid），
         // 供 parseImages 拼图片防盗链 Referer：/comic/{漫画cid}/chapter/{章节path}
         if (cid) setState('cid', String(cid));
+        var c = loginCookie();
+        if (!c) {
+            showToast('未登录，Komiic可能使用受限');
+        }
         return {
             url: baseUrl + '/api/query',
             method: 'POST',
@@ -342,6 +346,10 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     getHeader() {
         return { referer: baseUrl + '/', cookie: loginCookie() };
+    }
+
+    getRegisterUrl() {
+        return "https://komiic.cc/register";
     }
 
     login(params) {
@@ -396,7 +404,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     getLoginState() {
         var l = getLogin();
         if (l) {
-            try { var o = JSON.parse(l); return { loggedIn: !!(o.cookie || o.token) }; } catch (e) {}
+            try { var o = JSON.parse(l); return { loggedIn: !!(o.cookie || o.token) }; } catch (e) { }
         }
         return { loggedIn: false };
     }
@@ -407,10 +415,12 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     getSettings() {
         return [
-            { key: 'line', label: '线路', type: 'select', default: 'komiic.com', options: [
-                { label: 'komiic.com', value: 'komiic.com' },
-                { label: 'komiic.cc', value: 'komiic.cc' }
-            ] },
+            {
+                key: 'line', label: '线路', type: 'select', default: 'komiic.com', options: [
+                    { label: 'komiic.com', value: 'komiic.com' },
+                    { label: 'komiic.cc', value: 'komiic.cc' }
+                ]
+            },
             { key: 'image_limit', label: '剩余可看页数', type: 'callback', buttonText: '查询剩余额度' }
         ];
     }

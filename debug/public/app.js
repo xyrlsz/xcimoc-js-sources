@@ -28,6 +28,7 @@ const CUSTOM_METHODS = [
   'getCategories', 'getCategoryRequest', 'parseCategory',
   'getUrl', 'getHeader',
   'login', 'getLoginState', 'logout', 'getSettings', 'onSettingsAction',
+  'getRegisterUrl',
 ];
 
 const FLOW_FIELDS = {

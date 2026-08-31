@@ -119,6 +119,9 @@ var SOURCE = installSource(new (class extends MangaSource {
     getImagesRequest(cid, path) {
         var url = format('%s/app/v1/comic/chapter/%s/%s?platform=android&_v=2.2.4&_c=101_01_01_000', pcBaseUrl, cid, path);
         var t = loginToken();
+        if (!t) {
+            showToast('未登录，再漫画可能使用受限');
+        }
         log('[images] req cid=' + cid + ' path=' + path + ' hasToken=' + (t ? 'yes' : 'NO'));
         return {
             url: url,
@@ -149,6 +152,10 @@ var SOURCE = installSource(new (class extends MangaSource {
         var t = loginToken();
         if (t) h['authorization'] = 'Bearer ' + t;
         return h;
+    }
+
+    getRegisterUrl() {
+        return "https://m.zaimanhua.com/pages/user/user-register/user-register";
     }
 
     login(params) {
@@ -186,7 +193,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     getLoginState() {
         var l = getLogin();
         if (l) {
-            try { var o = JSON.parse(l); return { loggedIn: !!o.token }; } catch (e) {}
+            try { var o = JSON.parse(l); return { loggedIn: !!o.token }; } catch (e) { }
         }
         return { loggedIn: false };
     }
