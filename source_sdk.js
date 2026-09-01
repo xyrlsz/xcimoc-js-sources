@@ -903,7 +903,7 @@ MangaSource.prototype.getUrl = function (cid) { return null; };
 /* ---- 登录 / 设置 ---- */
 MangaSource.prototype.login = function (params) { return null; };
 MangaSource.prototype.getLoginState = function () { return null; };
-MangaSource.prototype.logout = function () {};
+MangaSource.prototype.logout = function () { };
 MangaSource.prototype.getSettings = function () { return []; };
 /* 设置按钮动作（如签到）：type 为 callback 的设置项点击时调用，返回 {success, message} */
 MangaSource.prototype.onSettingsAction = function (key) { return null; };
@@ -924,15 +924,256 @@ var __SOURCE_METHODS = [
     'getRegisterUrl'
 ];
 
+/* ================= 返回结构 Schema 校验 =================
+ * 目标：源脚本各 getXxxRequest / parseXxx 返回的「对象/数组」必须符合宿主
+ * （JsMangaParser）反解契约，否则会在 Java 侧静默产出空/错字段，极难排查。
+ *
+ * 这里对 installSource 暴露的每个被覆写方法做一层薄包装：
+ *   - 调用原方法拿到 result；
+ *   - 按 __SOURCE_SCHEMA 校验结构，非法处 log 警告（含方法名与字段名）；
+ *   - 可安全纠正的类型就地纠正（如 number→string、字符串化布尔）；
+ *   - 无法纠正的返回安全默认值（null / []），保证宿主不崩、不产出脏数据；
+ *   - 额外字段一律容忍（宿主忽略），不削弱源能力。
+ *
+ * 校验只读 result 外层结构；对非一次性对象可能就地改字段，源应避免复用同一对象。
+ * 经校验后的返回值仍是普通 JSON，宿主解析路径不变。
+ */
+
+function __isPO(v) { return v !== null && typeof v === 'object' && !isArray(v); }
+function __isStr(v) { return typeof v === 'string'; }
+function __warn(name, msg) { log('[schema:' + name + '] ' + msg); }
+
+/* 就地把非字符串字段纠正为字符串；undefined/null 保持原样。 */
+function __cStr(ret, name, key) {
+    var v = ret[key];
+    if (v === undefined || v === null) return;
+    if (!__isStr(v)) { __warn(name, '字段 ' + key + ' 应为字符串，已转字符串'); ret[key] = String(v); }
+}
+
+/* 请求描述对象：{ url(必填), method, headers, body, contentType } */
+function __chkRequest(result, name) {
+    if (result === null || result === undefined) return null; // 合法：宿主回退默认请求
+    if (!__isPO(result)) { __warn(name, '应为对象或 null'); return null; }
+    if (!__isStr(result.url) || result.url === '') { __warn(name, '缺少有效 url，已忽略该请求'); return null; }
+    if (result.method !== undefined && !__isStr(result.method)) { __warn(name, 'method 应为字符串'); result.method = 'GET'; }
+    if (result.headers !== undefined && result.headers !== null && !__isPO(result.headers)) { __warn(name, 'headers 应为对象'); delete result.headers; }
+    if (result.body !== undefined && result.body !== null && !__isStr(result.body)) { __warn(name, 'body 应为字符串'); result.body = String(result.body); }
+    if (result.contentType !== undefined && result.contentType !== null && !__isStr(result.contentType)) { __warn(name, 'contentType 应为字符串'); delete result.contentType; }
+    return result;
+}
+
+/* 搜索结果项：{ cid, title, cover?, update?, author?, … }
+ * 宿主 JsSearchIterator 用 jstr() 读取 cid/title/cover/update/author（对 JSON null 容忍），
+ * 故校验放宽：cid/title 仅 null/undefined 判无效，空串保留；其余字段就地转字符串。 */
+function __chkSearchItem(it, name) {
+    if (!__isPO(it)) { __warn(name, '数组项应为对象，已跳过'); return null; }
+    if (it.cid === undefined || it.cid === null) { __warn(name, '数组项缺少 cid，已跳过'); return null; }
+    __cStr(it, name, 'cid');
+    if (it.title === undefined || it.title === null) { __warn(name, '数组项缺少 title，已跳过'); return null; }
+    __cStr(it, name, 'title');
+    __cStr(it, name, 'cover');
+    __cStr(it, name, 'update');
+    __cStr(it, name, 'author');
+    return it;
+}
+
+/* 章节项：{ title?, path(必填), group? } —— 对齐宿主 toChapters：仅 path 非空才有效（
+ * 宿主 `if (StringUtils.isEmpty(path)) continue;`），title 可空（宿主容忍转 null），group 保留。 */
+function __chkChapterItem(it, name) {
+    if (!__isPO(it)) { __warn(name, '章节项应为对象，已跳过'); return null; }
+    if (it.path === undefined || it.path === null || it.path === '') { __warn(name, '章节项缺少有效 path，已跳过'); return null; }
+    __cStr(it, name, 'path');
+    if (it.title !== undefined && it.title !== null) __cStr(it, name, 'title');
+    if (it.group !== undefined && it.group !== null) __cStr(it, name, 'group');
+    return it;
+}
+
+/* 图片项：{ url 或 urls(非空数组), lazy?, headers? } —— 对齐宿主 parseImages：
+ * 单数 url 是主格式，urls 数组是可选扩展；二者至少其一。lazy 须布尔、headers 须对象。 */
+function __chkImagesItem(it, name) {
+    if (!__isPO(it)) { __warn(name, '图片项应为对象，已跳过'); return null; }
+    var hasUrl = (it.url !== undefined && it.url !== null && it.url !== '');
+    var hasUrls = isArray(it.urls) && it.urls.length > 0;
+    if (!hasUrl && !hasUrls) { __warn(name, '图片项缺少 url 或 urls，已跳过'); return null; }
+    if (hasUrl) __cStr(it, name, 'url');
+    if (it.urls !== undefined && it.urls !== null) {
+        if (!isArray(it.urls)) { __warn(name, 'urls 应为数组'); delete it.urls; }
+        else {
+            for (var i = 0; i < it.urls.length; i++) {
+                if (!__isStr(it.urls[i])) { __warn(name, 'urls[' + i + '] 非字符串，已转字符串'); it.urls[i] = String(it.urls[i]); }
+            }
+        }
+    }
+    if (it.lazy !== undefined && typeof it.lazy !== 'boolean') { __warn(name, 'lazy 应为布尔'); it.lazy = !!it.lazy; }
+    if (it.headers !== undefined && it.headers !== null && !__isPO(it.headers)) { __warn(name, 'headers 应为对象'); delete it.headers; }
+    return it;
+}
+
+/* 通用数组包装：null/undefined → []，非数组 → []，逐项校验过滤。 */
+function __chkArray(result, name, itemFn) {
+    if (result === null || result === undefined) return [];
+    if (!isArray(result)) { __warn(name, '应为数组'); return []; }
+    var out = [];
+    for (var i = 0; i < result.length; i++) {
+        var it = itemFn(result[i], name);
+        if (it !== null) out.push(it);
+    }
+    return out;
+}
+
+/* 详情对象：{ title?, cover?, author?, intro?, status?, update?, tags?, chapters? }
+ * chapters 宿主（parseInfo）只做 `o.optJSONArray("chapters")` 存到 comic.note，由 parseChapter/toChapters
+ * 自行过滤，故此处只保证 chapters 是数组，不逐项强制 title/path（避免误伤合法章节）。 */
+function __chkInfo(result, name) {
+    if (result === null || result === undefined) return null; // 合法
+    if (!__isPO(result)) { __warn(name, '应为对象或 null'); return null; }
+    var sf = ['title', 'cover', 'author', 'intro', 'status', 'update', 'tags'];
+    for (var i = 0; i < sf.length; i++) __cStr(result, name, sf[i]);
+    if (result.chapters !== undefined && result.chapters !== null && !isArray(result.chapters)) {
+        __warn(name, 'chapters 应为数组');
+        delete result.chapters;
+    }
+    return result;
+}
+
+/* 可空字符串：parseLazy / parseCheck / getUrl / getRegisterUrl */
+function __chkNullableString(result, name) {
+    if (result === null || result === undefined) return null;
+    if (!__isStr(result)) { __warn(name, '应为字符串或 null'); return null; }
+    return result;
+}
+
+/* 可空对象：getHeader */
+function __chkNullableObject(result, name) {
+    if (result === null || result === undefined) return null;
+    if (!__isPO(result)) { __warn(name, '应为对象或 null'); return null; }
+    return result;
+}
+
+/* 操作结果：{ success, message } —— login / onSettingsAction */
+function __chkResult(result, name) {
+    if (result === null || result === undefined) return null;
+    if (!__isPO(result)) { __warn(name, '应为对象或 null'); return null; }
+    if (result.success !== undefined && typeof result.success !== 'boolean') { __warn(name, 'success 应为布尔'); result.success = !!result.success; }
+    if (result.message !== undefined && result.message !== null && !__isStr(result.message)) { __warn(name, 'message 应为字符串'); result.message = String(result.message); }
+    return result;
+}
+
+/* 登录态：{ loggedIn } */
+function __chkLoginState(result, name) {
+    if (result === null || result === undefined) return null;
+    if (!__isPO(result)) { __warn(name, '应为对象或 null'); return null; }
+    if (result.loggedIn !== undefined && typeof result.loggedIn !== 'boolean') { __warn(name, 'loggedIn 应为布尔'); result.loggedIn = !!result.loggedIn; }
+    return result;
+}
+
+/* 设置项数组：{ key(必填), label?, type?, default?, options? } */
+function __chkSettingsArray(result, name) {
+    if (result === null || result === undefined) return [];
+    if (!isArray(result)) { __warn(name, '应为数组'); return []; }
+    var out = [];
+    for (var i = 0; i < result.length; i++) {
+        var it = result[i];
+        if (!__isPO(it)) { __warn(name, '设置项应为对象，已跳过'); continue; }
+        if (!__isStr(it.key) || it.key === '') { __warn(name, '设置项缺少 key，已跳过'); continue; }
+        __cStr(it, name, 'label');
+        __cStr(it, name, 'type');
+        if (it.options !== undefined && it.options !== null) {
+            if (!isArray(it.options)) { __warn(name, '设置项 options 应为数组'); delete it.options; }
+            else {
+                var ops = [];
+                for (var j = 0; j < it.options.length; j++) {
+                    var o = it.options[j];
+                    if (__isPO(o)) { __cStr(o, name + '.options', 'label'); __cStr(o, name + '.options', 'value'); ops.push(o); }
+                }
+                it.options = ops;
+            }
+        }
+        out.push(it);
+    }
+    return out;
+}
+
+/* 分类定义对象：{ composite?, pageSize?, format?, allValue?, 各维度数组 } */
+function __chkCategories(result, name) {
+    if (result === null || result === undefined) return null;
+    if (!__isPO(result)) { __warn(name, '应为对象或 null'); return null; }
+    if (result.composite !== undefined && typeof result.composite !== 'boolean') { __warn(name, 'composite 应为布尔'); result.composite = !!result.composite; }
+    if (result.pageSize !== undefined && typeof result.pageSize !== 'number') { __warn(name, 'pageSize 应为数字'); delete result.pageSize; }
+    if (result.format !== undefined && result.format !== null && !__isStr(result.format)) { __warn(name, 'format 应为字符串'); result.format = String(result.format); }
+    var dims = ['subject', 'area', 'reader', 'year', 'progress', 'order'];
+    for (var i = 0; i < dims.length; i++) {
+        var d = result[dims[i]];
+        if (d === undefined || d === null) continue;
+        if (!isArray(d)) { __warn(name, dims[i] + ' 应为数组'); delete result[dims[i]]; continue; }
+        var out = [];
+        for (var j = 0; j < d.length; j++) {
+            var it = d[j];
+            if (__isPO(it)) { __cStr(it, name + '.' + dims[i], 'title'); __cStr(it, name + '.' + dims[i], 'value'); out.push(it); }
+            else if (isArray(it) && it.length >= 2) { out.push({ title: String(it[0]), value: String(it[1]) }); } // [title,value] 兼容
+            else __warn(name, dims[i] + ' 项格式非法，已跳过');
+        }
+        result[dims[i]] = out;
+    }
+    return result;
+}
+
+/* 方法 → 校验器。check(result, name) 返回规范化结果；fallback() 返回异常/无法纠正时的安全默认。 */
+var __SOURCE_SCHEMA = {
+    getSearchRequest: { check: __chkRequest, fallback: function () { return null; } },
+    getInfoRequest: { check: __chkRequest, fallback: function () { return null; } },
+    getChapterRequest: { check: __chkRequest, fallback: function () { return null; } },
+    getImagesRequest: { check: __chkRequest, fallback: function () { return null; } },
+    getLazyRequest: { check: __chkRequest, fallback: function () { return null; } },
+    getCheckRequest: { check: __chkRequest, fallback: function () { return null; } },
+    getCategoryRequest: { check: __chkRequest, fallback: function () { return null; } },
+
+    parseSearch: { check: function (r, n) { return __chkArray(r, n, __chkSearchItem); }, fallback: function () { return []; } },
+    parseCategory: { check: function (r, n) { return __chkArray(r, n, __chkSearchItem); }, fallback: function () { return []; } },
+    parseChapter: { check: function (r, n) { return __chkArray(r, n, __chkChapterItem); }, fallback: function () { return []; } },
+    parseImages: { check: function (r, n) { return __chkArray(r, n, __chkImagesItem); }, fallback: function () { return []; } },
+
+    parseInfo: { check: __chkInfo, fallback: function () { return null; } },
+
+    parseLazy: { check: __chkNullableString, fallback: function () { return null; } },
+    parseCheck: { check: __chkNullableString, fallback: function () { return null; } },
+    getUrl: { check: __chkNullableString, fallback: function () { return null; } },
+    getRegisterUrl: { check: __chkNullableString, fallback: function () { return null; } },
+
+    getHeader: { check: __chkNullableObject, fallback: function () { return null; } },
+
+    login: { check: __chkResult, fallback: function () { return null; } },
+    onSettingsAction: { check: __chkResult, fallback: function () { return null; } },
+    getLoginState: { check: __chkLoginState, fallback: function () { return null; } },
+    getSettings: { check: __chkSettingsArray, fallback: function () { return []; } },
+    getCategories: { check: __chkCategories, fallback: function () { return null; } }
+};
+
+/* 调用被覆写的方法并套用 schema 校验；方法抛异常时回退到安全默认。 */
+function __runChecked(name, method, src, args, schema) {
+    var result;
+    try {
+        result = method.apply(src, args);
+    } catch (e) {
+        __warn(name, '执行异常: ' + (e && e.message ? e.message : e));
+        return schema.fallback();
+    }
+    return schema.check(result, name);
+}
+
 /* 把源实例暴露给宿主：
  *   1. 仅把「覆写过的」方法（≠ 基类默认实现）绑定为全局函数，保持 hasFunction 检测正确；
- *   2. 把实例挂到全局 SOURCE（宿主据此读取 type/title/baseUrl/webConfig 等元数据）。 */
+ *   2. 对覆写的方法套一层 __SOURCE_SCHEMA 校验（见上文），保证返回结构符合宿主契约；
+ *   3. 把实例挂到全局 SOURCE（宿主据此读取 type/title/baseUrl/webConfig 等元数据）。 */
 function installSource(src) {
     for (var i = 0; i < __SOURCE_METHODS.length; i++) {
         (function (name) {
             var method = src[name];
             if (typeof method === 'function' && method !== MangaSource.prototype[name]) {
-                globalThis[name] = function () { return method.apply(src, arguments); };
+                var schema = __SOURCE_SCHEMA[name];
+                globalThis[name] = schema
+                    ? function () { return __runChecked(name, method, src, arguments, schema); }
+                    : function () { return method.apply(src, arguments); };
             }
         })(__SOURCE_METHODS[i]);
     }

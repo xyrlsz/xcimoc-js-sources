@@ -153,7 +153,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         log('[copy] parseChapter: total=' + list.length + ' chapters');
         for (var k = 0; k < list.length; k++) {
             log('[copy] chapter[' + k + '] title=' + list[k].title
-                    + ' path=' + list[k].path + ' group=' + list[k].group);
+                + ' path=' + list[k].path + ' group=' + list[k].group);
         }
         return list;
     }

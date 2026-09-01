@@ -25,7 +25,7 @@ function makeSandbox(name) {
       // 与 source_sdk.js 的 _call 保持一致：hostCall 返回 JSON 字符串，SDK 再 JSON.parse
       const raw = (v) => JSON.stringify(v);
       let args = {};
-      try { args = JSON.parse(argsJson || '{}'); } catch {}
+      try { args = JSON.parse(argsJson || '{}'); } catch { }
       switch (method) {
         case 'dom': return raw({ id: -1 });                 // DOM 桩：空节点
         case 'state':

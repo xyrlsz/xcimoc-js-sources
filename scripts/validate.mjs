@@ -29,7 +29,7 @@ function validateScript(script, name) {
     hostCall: (method, argsJson) => {
       // 仅 stub 仍需宿主的能力；计算类工具（md5/base64/lz64/aes/urlencode）已纯 JS 化
       let args = {};
-      try { args = JSON.parse(argsJson || '{}'); } catch {}
+      try { args = JSON.parse(argsJson || '{}'); } catch { }
       switch (method) {
         case 'dom': return JSON.stringify({ id: -1 });
         case 'state':
