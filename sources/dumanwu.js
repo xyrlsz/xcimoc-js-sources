@@ -90,7 +90,13 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     parseChapter(html, comicJson) {
         var list = [];
-        var comic = JSON.parse(comicJson || '{}');
+        // 宿主把 comicJson 作为 JS 对象传入（{cid,title}），兼容对象/字符串两种形态
+        var comic = {};
+        if (typeof comicJson === 'string') {
+            try { comic = JSON.parse(comicJson || '{}'); } catch (e) { comic = {}; }
+        } else if (comicJson && typeof comicJson === 'object') {
+            comic = comicJson;
+        }
         var body = DOM(html);
         var chapterNodes = body.select('.chaplist-box > ul > li > a');
         for (var i = 0; i < chapterNodes.length; i++) {

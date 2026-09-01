@@ -11,9 +11,16 @@
  * 出参：stdout 一行 JSON：{ status, headers, setCookie, body, error? }
  */
 import { readFileSync } from 'node:fs';
+import { setGlobalDispatcher, Agent } from 'undici';
+
+// 关闭 keep-alive 连接池：否则本脚本经 execFileSync 同步启动、结束时
+// process.exit() 会撞上未关闭的连接 handle，Windows 下触发
+// "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)" 导致子进程崩溃、
+// 调用方（doFetch）收到空 body —— 大响应（如 100KB+ 章节列表）必现。
+setGlobalDispatcher(new Agent({ keepAliveTimeout: 1, keepAliveMaxTimeout: 1 }));
 
 let input = '';
-try { input = readFileSync(0, 'utf8'); } catch (e) {}
+try { input = readFileSync(0, 'utf8'); } catch (e) { }
 
 const out = () => process.stdout.write(JSON.stringify({ status: 0, headers: {}, setCookie: [], body: '', error: '输入无效' }) + '\n');
 

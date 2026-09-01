@@ -24,10 +24,11 @@ var SOURCE = installSource(new (class extends MangaSource {
         var nodes = DOM(html).select('div.mg-search-item');
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
+            var cov = node.attr('.mg-search-thumb', 'data-original');
             list.push({
                 cid: node.href('.mg-search-name > a'),
                 title: node.text('.mg-search-name'),
-                cover: baseUrl + node.attr('.mg-search-thumb', 'data-original'),
+                cover: cov ? baseUrl + cov : null,
                 update: '',
                 author: ''
             });
@@ -59,9 +60,10 @@ var SOURCE = installSource(new (class extends MangaSource {
                 update = tmp.replace('上架时间：', '').trim();
             }
         }
+        var cov = body.src('.mg-banner-cover');
         return {
             title: body.text('.mg-detail-title'),
-            cover: baseUrl + body.src('.mg-banner-cover'),
+            cover: cov ? baseUrl + cov : null,
             update: update,
             author: author,
             intro: body.text('.mg-blurb-text'),

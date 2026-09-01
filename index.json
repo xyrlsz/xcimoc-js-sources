@@ -53,7 +53,7 @@
     {
       "type": 102,
       "title": "热辣漫画",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "url": "sources/hotmanga.js",
       "baseUrl": "https://www.manga2026.com"
     },
@@ -95,7 +95,7 @@
     {
       "type": 104,
       "title": "读漫屋",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "url": "sources/dumanwu.js",
       "baseUrl": "http://dumanwu1.com"
     },
@@ -144,7 +144,7 @@
     {
       "type": 114,
       "title": "古风漫画",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "url": "sources/gfmh.js",
       "baseUrl": "https://www.gfmh.app"
     },
@@ -165,7 +165,7 @@
     {
       "type": 119,
       "title": "漫画之家",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "url": "sources/manhuazhijia.js",
       "baseUrl": "https://www.manhuahome.com"
     },

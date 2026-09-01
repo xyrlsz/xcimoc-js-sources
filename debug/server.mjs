@@ -18,7 +18,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import vm from 'node:vm';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync, spawnSync, spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import * as cheerio from 'cheerio';
 
@@ -58,14 +58,24 @@ function doFetch(req) {
   });
   const helper = join(__dirname, 'fetch-helper.mjs');
   try {
-    const raw = execFileSync(process.execPath, [helper], {
+    // 用 spawnSync 而非 execFileSync：Windows 下大响应时 fetch-helper 子进程
+    // 可能在 process.exit() 阶段 libuv assert 崩溃（exit code 非 0），execFileSync
+    // 会因此抛异常并丢弃已写好的 stdout；spawnSync 即使 status!=0 也保留 stdout，
+    // 只要 JSON 已完整写出即可正常解析。
+    const r = spawnSync(process.execPath, [helper], {
       input: payload,
       encoding: 'utf8',
       windowsHide: true,
       maxBuffer: 256 * 1024 * 1024,
       timeout: 120000,
     });
-    return JSON.parse(raw);
+    if (r.error) throw r.error;
+    const raw = (r.stdout || '').toString();
+    if (!raw) {
+      return { status: 0, headers: {}, setCookie: [], body: '', error: 'fetch 无输出' + (r.stderr ? ' :: ' + r.stderr : '') };
+    }
+    const last = raw.trim().split('\n').pop();
+    return JSON.parse(last);
   } catch (e) {
     return { status: 0, headers: {}, setCookie: [], body: '', error: 'fetch 失败: ' + ((e && e.message) || e) };
   }
@@ -183,7 +193,7 @@ function handleDom(args, ctx) {
 function makeHostCall(ctx) {
   return function hostCall(name, argsJson) {
     let args = {};
-    try { args = JSON.parse(argsJson || '{}'); } catch (e) {}
+    try { args = JSON.parse(argsJson || '{}'); } catch (e) { }
     switch (name) {
       case 'log':
         ctx.logs.push(String(args.data));

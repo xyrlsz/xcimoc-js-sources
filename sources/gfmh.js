@@ -38,6 +38,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
             var href = node.href('div > a') || '';
+            if (!href) continue; // 无有效链接则跳过，避免 cid 为空串产生脏数据项
             list.push({
                 cid: href.substring(1).replace('.html', ''),
                 title: node.text('div > a > h3'),

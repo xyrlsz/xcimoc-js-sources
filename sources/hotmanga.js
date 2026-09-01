@@ -81,7 +81,15 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     parseChapter(html, comicJson) {
         var list = [];
-        var comic = JSON.parse(comicJson || '{}');
+        // 宿主把 comicJson 作为 JS 对象传入（{cid,title}），部分调试/缓存路径也可能传 JSON 字符串——
+        // 兼容两种形态（对象直接使用，字符串才 JSON.parse），避免 JSON.parse(对象) 抛
+        // "[object Object] is not valid JSON" → 整章列表解析失败。
+        var comic = {};
+        if (typeof comicJson === 'string') {
+            try { comic = JSON.parse(comicJson || '{}'); } catch (e) { comic = {}; }
+        } else if (comicJson && typeof comicJson === 'object') {
+            comic = comicJson;
+        }
         var jsonObject = JSON.parse(html);
         var array = jsonObject.results.list;
         for (var i = 0; i < array.length; i++) {
