@@ -1,29 +1,180 @@
 {
   "version": 1,
   "sources": [
-    { "type": 0, "title": "漫画柜", "version": "1.0.1", "url": "sources/manhuagui.js", "baseUrl": "https://www.manhuagui.com" },
-    { "type": 5, "title": "动漫屋", "version": "1.0.3", "url": "sources/dm5.js", "baseUrl": "https://m.dm5.com" },
-    { "type": 51, "title": "腾讯动漫", "version": "1.0.1", "url": "sources/tencent.js", "baseUrl": "https://m.ac.qq.com/" },
-    { "type": 52, "title": "布卡漫画", "version": "1.0.0", "url": "sources/buka.js", "baseUrl": "https://www.bukamh.com" },
-    { "type": 49, "title": "漫画台", "version": "1.0.1", "url": "sources/manhuatai.js", "baseUrl": "https://www.kanman.com" },
-    { "type": 26, "title": "拷贝漫画", "version": "1.0.5", "url": "sources/copymh.js", "baseUrl": "https://www.copy4000.com" },
-    { "type": 27, "title": "拷贝漫画Web", "version": "1.0.2", "url": "sources/copymhweb.js", "baseUrl": "https://www.copy4000.com" },
-    { "type": 102, "title": "热辣漫画", "version": "1.0.0", "url": "sources/hotmanga.js", "baseUrl": "https://www.manga2026.com" },
-    { "type": 82, "title": "MangaBZ", "version": "1.0.0", "url": "sources/mangabz.js", "baseUrl": "http://www.mangabz.com/" },
-    { "type": 11, "title": "咚漫漫画", "version": "1.0.0", "url": "sources/dongmanmanhua.js", "baseUrl": "https://www.dongmanmanhua.cn" },
-    { "type": 91, "title": "优酷漫画", "version": "1.0.0", "url": "sources/ykmh.js", "baseUrl": "https://m.ykmh.net/" },
-    { "type": 101, "title": "包子漫画", "version": "1.0.1", "url": "sources/baozi.js", "baseUrl": "https://www.baozimh.com" },
-    { "type": 103, "title": "MYCOMIC", "version": "1.0.0", "url": "sources/mycomic.js", "baseUrl": "https://mycomic.com" },
-    { "type": 104, "title": "读漫屋", "version": "1.0.0", "url": "sources/dumanwu.js", "baseUrl": "http://dumanwu1.com" },
-    { "type": 106, "title": "komiic", "version": "1.1.5", "url": "sources/komiic.js", "baseUrl": "https://komiic.com" },
-    { "type": 107, "title": "漫画鱼", "version": "1.0.0", "url": "sources/manhuayu.js", "baseUrl": "https://www.manhuayu88.com" },
-    { "type": 108, "title": "G社漫畫", "version": "1.0.0", "url": "sources/godamanhua.js", "baseUrl": "https://m.g-mh.org" },
-    { "type": 111, "title": "YY漫画", "version": "1.0.0", "url": "sources/yymanhua.js", "baseUrl": "https://www.yymanhua.com" },
-    { "type": 12, "title": "再漫画", "version": "1.1.3", "url": "sources/zaimanhua.js", "baseUrl": "https://m.zaimanhua.com" },
-    { "type": 113, "title": "漫本", "version": "1.0.0", "url": "sources/manben.js", "baseUrl": "https://www.manben.com" },
-    { "type": 114, "title": "古风漫画", "version": "1.0.0", "url": "sources/gfmh.js", "baseUrl": "https://www.gfmh.app" },
-    { "type": 116, "title": "漫画屋", "version": "1.0.0", "url": "sources/mh5.js", "baseUrl": "https://mh5.app" },
-    { "type": 118, "title": "动漫嗨", "version": "1.0.0", "url": "sources/dongmanhi.js", "baseUrl": "https://www.dongmanhi.com" },
-    { "type": 119, "title": "漫画之家", "version": "1.0.0", "url": "sources/manhuazhijia.js", "baseUrl": "https://www.manhuahome.com" }
+    {
+      "type": 0,
+      "title": "漫画柜",
+      "version": "1.0.1",
+      "url": "sources/manhuagui.js",
+      "baseUrl": "https://www.manhuagui.com"
+    },
+    {
+      "type": 5,
+      "title": "动漫屋",
+      "version": "1.0.3",
+      "url": "sources/dm5.js",
+      "baseUrl": "https://m.dm5.com"
+    },
+    {
+      "type": 51,
+      "title": "腾讯动漫",
+      "version": "1.0.1",
+      "url": "sources/tencent.js",
+      "baseUrl": "https://m.ac.qq.com/"
+    },
+    {
+      "type": 52,
+      "title": "布卡漫画",
+      "version": "1.0.0",
+      "url": "sources/buka.js",
+      "baseUrl": "https://www.bukamh.com"
+    },
+    {
+      "type": 49,
+      "title": "漫画台",
+      "version": "1.0.1",
+      "url": "sources/manhuatai.js",
+      "baseUrl": "https://www.kanman.com"
+    },
+    {
+      "type": 26,
+      "title": "拷贝漫画",
+      "version": "1.0.5",
+      "url": "sources/copymh.js",
+      "baseUrl": "https://www.copy4000.com"
+    },
+    {
+      "type": 27,
+      "title": "拷贝漫画Web",
+      "version": "1.0.2",
+      "url": "sources/copymhweb.js",
+      "baseUrl": "https://www.copy4000.com"
+    },
+    {
+      "type": 102,
+      "title": "热辣漫画",
+      "version": "1.0.0",
+      "url": "sources/hotmanga.js",
+      "baseUrl": "https://www.manga2026.com"
+    },
+    {
+      "type": 82,
+      "title": "MangaBZ",
+      "version": "1.0.0",
+      "url": "sources/mangabz.js",
+      "baseUrl": "http://www.mangabz.com/"
+    },
+    {
+      "type": 11,
+      "title": "咚漫漫画",
+      "version": "1.0.0",
+      "url": "sources/dongmanmanhua.js",
+      "baseUrl": "https://www.dongmanmanhua.cn"
+    },
+    {
+      "type": 91,
+      "title": "优酷漫画",
+      "version": "1.0.0",
+      "url": "sources/ykmh.js",
+      "baseUrl": "https://m.ykmh.net/"
+    },
+    {
+      "type": 101,
+      "title": "包子漫画",
+      "version": "1.0.1",
+      "url": "sources/baozi.js",
+      "baseUrl": "https://www.baozimh.com"
+    },
+    {
+      "type": 103,
+      "title": "MYCOMIC",
+      "version": "1.0.0",
+      "url": "sources/mycomic.js",
+      "baseUrl": "https://mycomic.com"
+    },
+    {
+      "type": 104,
+      "title": "读漫屋",
+      "version": "1.0.0",
+      "url": "sources/dumanwu.js",
+      "baseUrl": "http://dumanwu1.com"
+    },
+    {
+      "type": 106,
+      "title": "komiic",
+      "version": "1.1.5",
+      "url": "sources/komiic.js",
+      "baseUrl": "https://komiic.com"
+    },
+    {
+      "type": 107,
+      "title": "漫画鱼",
+      "version": "1.0.0",
+      "url": "sources/manhuayu.js",
+      "baseUrl": "https://www.manhuayu88.com"
+    },
+    {
+      "type": 108,
+      "title": "G社漫畫",
+      "version": "1.0.0",
+      "url": "sources/godamanhua.js",
+      "baseUrl": "https://m.g-mh.org"
+    },
+    {
+      "type": 111,
+      "title": "YY漫画",
+      "version": "1.0.0",
+      "url": "sources/yymanhua.js",
+      "baseUrl": "https://www.yymanhua.com"
+    },
+    {
+      "type": 12,
+      "title": "再漫画",
+      "version": "1.1.3",
+      "url": "sources/zaimanhua.js",
+      "baseUrl": "https://m.zaimanhua.com"
+    },
+    {
+      "type": 113,
+      "title": "漫本",
+      "version": "1.0.0",
+      "url": "sources/manben.js",
+      "baseUrl": "https://www.manben.com"
+    },
+    {
+      "type": 114,
+      "title": "古风漫画",
+      "version": "1.0.0",
+      "url": "sources/gfmh.js",
+      "baseUrl": "https://www.gfmh.app"
+    },
+    {
+      "type": 116,
+      "title": "漫画屋",
+      "version": "1.0.0",
+      "url": "sources/mh5.js",
+      "baseUrl": "https://mh5.app"
+    },
+    {
+      "type": 118,
+      "title": "动漫嗨",
+      "version": "1.0.0",
+      "url": "sources/dongmanhi.js",
+      "baseUrl": "https://www.dongmanhi.com"
+    },
+    {
+      "type": 119,
+      "title": "漫画之家",
+      "version": "1.0.0",
+      "url": "sources/manhuazhijia.js",
+      "baseUrl": "https://www.manhuahome.com"
+    },
+    {
+      "type": 120,
+      "title": "瓜子漫画",
+      "version": "1.0.0",
+      "url": "sources/guazimanhua.js",
+      "baseUrl": "https://www.guazimanhua.com"
+    }
   ]
 }
