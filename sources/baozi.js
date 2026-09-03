@@ -1,7 +1,6 @@
 // 包子漫画 (Baozi) — 由 Java 源 port
 const baseUrl = 'https://www.baozimh.com';
-// 原 Java 从 SharedPreferences 读取图片质量（默认 index 0 = w640）
-const IMG_QUALITY = '/w640';
+// 图片画质（默认 w640）：在 parseImages 中按 getSetting('img_quality') 决定是否加 /w640 后缀
 
 // 工具函数（模块级，不暴露为源接口）
 function isFinishText(text) {
@@ -101,11 +100,13 @@ var SOURCE = installSource(new (class extends MangaSource {
         var body = DOM(html);
         var nodes = body.select('.comic-contain > .chapter-img');
         log('[images] baozi htmlLen=' + (html ? html.length : 0) + ' nodes=' + nodes.length);
+        // 图片画质：w640 加 /w640 后缀（省流），orig 原图不加后缀
+        var imgQuality = (getSetting('img_quality', 'w640') === 'w640') ? '/w640' : '';
         for (var i = 1; i <= nodes.length; i++) {
             var imgUrl = nodes[i - 1].attr('.comic-contain__item', 'data-src');
             var m = /^(https?:\/\/)?([^\/\s:]+)(:\d+)?(\/[a-z]comic\/.*)/.exec(imgUrl || '');
             if (m) {
-                imgUrl = m[1] + m[2] + IMG_QUALITY + m[4];
+                imgUrl = m[1] + m[2] + imgQuality + m[4];
             }
             list.push({ url: imgUrl, lazy: false });
         }
@@ -179,5 +180,17 @@ var SOURCE = installSource(new (class extends MangaSource {
                 { title: '0-9', value: '0-9' }
             ]
         };
+    }
+
+    getSettings() {
+        return [
+            {
+                key: 'img_quality', label: '图片画质', type: 'select', default: 'w640',
+                options: [
+                    { label: '省流（w640）', value: 'w640' },
+                    { label: '原图（高清）', value: 'orig' }
+                ]
+            }
+        ];
     }
 })());

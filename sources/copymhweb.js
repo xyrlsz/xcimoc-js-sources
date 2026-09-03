@@ -168,13 +168,15 @@ var SOURCE = installSource(new (class extends MangaSource {
         var list = [];
         var body = DOM(html);
         var nodes = body.select('ul.comicContent-list > li');
+        // 图片画质档位：把结尾 c\d+x 统一替换成所选宽度（800/1200/1500）
+        var quality = getSetting('img_quality', '1500') || '1500';
         for (var i = 1; i <= nodes.length; i++) {
             var imgs = nodes[i - 1].select('img');
             if (!imgs.length) continue;
             // data-src 是懒加载地址，懒加载未触发时可能为 null，回退到 src 并跳过空值
             var imgUrl = imgs[0].attr('data-src') || imgs[0].attr('src');
             if (!imgUrl) continue;
-            imgUrl = imgUrl.replace(/c\d+x\.[a-zA-Z]+$/, 'c1500x.webp');
+            imgUrl = imgUrl.replace(/c\d+x\.[a-zA-Z]+$/, 'c' + quality + 'x.webp');
             list.push({ url: imgUrl, lazy: false });
         }
         log('[copy] parseImages: nodes=' + nodes.length + ' total=' + list.length + ' images');
@@ -203,6 +205,14 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     getSettings() {
         return [
+            {
+                key: 'img_quality', label: '图片画质', type: 'select', default: '1500',
+                options: [
+                    { label: '流畅（800px）', value: '800' },
+                    { label: '清晰（1200px）', value: '1200' },
+                    { label: '高清（1500px）', value: '1500' }
+                ]
+            },
             { key: 'probe', label: '搜索接口', type: 'callback', buttonText: '重新探测接口' }
         ];
     }

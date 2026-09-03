@@ -2,8 +2,7 @@
 // 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
 const website = 'https://www.manga2026.com';
 const api = 'https://api.2024manga.com';
-// 原 Java 从 SharedPreferences 读取图片质量（默认 index 2 = 1500）
-const IMG_QUALITY = '1500';
+// 图片画质（默认 1500）：在 parseImages 中按 getSetting('img_quality') 替换宽度
 
 var SOURCE = installSource(new (class extends MangaSource {
     constructor() {
@@ -127,9 +126,11 @@ var SOURCE = installSource(new (class extends MangaSource {
         var list = [];
         var jsonObject = JSON.parse(html);
         var array = jsonObject.results.chapter.contents;
+        // 图片画质档位：把结尾 .jpg.h\d+x.jpg 统一替换成所选宽度（800/1200/1500）
+        var quality = getSetting('img_quality', '1500') || '1500';
         for (var i = 0; i < array.length; i++) {
             var url = String(array[i].url).replace('m_read', 'kb_m_read_large');
-            url = url.replace(/\.jpg\.h\d+x\.jpg$/, '.jpg.h' + IMG_QUALITY + 'x.jpg');
+            url = url.replace(/\.jpg\.h\d+x\.jpg$/, '.jpg.h' + quality + 'x.jpg');
             list.push({ url: url, lazy: false });
         }
         return list;
@@ -225,5 +226,18 @@ var SOURCE = installSource(new (class extends MangaSource {
                 { title: '熱度', value: 'popular' }
             ]
         };
+    }
+
+    getSettings() {
+        return [
+            {
+                key: 'img_quality', label: '图片画质', type: 'select', default: '1500',
+                options: [
+                    { label: '流畅（800px）', value: '800' },
+                    { label: '清晰（1200px）', value: '1200' },
+                    { label: '高清（1500px）', value: '1500' }
+                ]
+            }
+        ];
     }
 })());

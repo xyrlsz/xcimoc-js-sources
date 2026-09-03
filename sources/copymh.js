@@ -202,9 +202,11 @@ var SOURCE = installSource(new (class extends MangaSource {
             var m = new RegExp('\\[.*]', 's').exec(plainText);
             if (!m) return list;
             var urls = JSON.parse(m[0]);
+            // 图片画质档位：把结尾 c\d+x 统一替换成所选宽度（800/1200/1500）
+            var quality = getSetting('img_quality', '1500') || '1500';
             for (var i = 0; i < urls.length; i++) {
                 var imgUrl = urls[i].url;
-                imgUrl = imgUrl.replace(/c\d+x\.[a-zA-Z]+$/, 'c1500x.webp');
+                imgUrl = imgUrl.replace(/c\d+x\.[a-zA-Z]+$/, 'c' + quality + 'x.webp');
                 list.push({ url: imgUrl, lazy: false });
             }
         } catch (e) {
@@ -326,6 +328,14 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     getSettings() {
         return [
+            {
+                key: 'img_quality', label: '图片画质', type: 'select', default: '1500',
+                options: [
+                    { label: '流畅（800px）', value: '800' },
+                    { label: '清晰（1200px）', value: '1200' },
+                    { label: '高清（1500px）', value: '1500' }
+                ]
+            },
             { key: 'probe', label: '搜索接口', type: 'callback', buttonText: '重新探测接口' }
         ];
     }
