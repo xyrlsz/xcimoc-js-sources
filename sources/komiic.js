@@ -68,7 +68,6 @@ function loginCookie() {
 
 // 带登录 cookie 的请求头
 function authHeaders() {
-    // 登录态已过期（cookie 内 JWT 的 exp 已到）→ 先尝试刷新，再返回请求头
     if (checkExpired()) {
         refreshLogin();
     }
@@ -78,9 +77,7 @@ function authHeaders() {
     return h;
 }
 
-// ---- 登录过期检查 / token(cookie 内 JWT) 刷新 / 自动重登（对齐原 Java KomiicUtils） ----
-
-// 从 cookie 中提取 JWT 的 exp（秒）；无 JWT 或解析失败返回 -1
+// ---- 登录过期检查 / token(cookie 内 JWT) 刷新 / 自动重登 ----
 function getExpFromJwt(cookieStr) {
     if (!cookieStr) return -1;
     var m = /([A-Za-z0-9\-_]+)\.([A-Za-z0-9\-_]+)\.([A-Za-z0-9\-_]+)/.exec(cookieStr);
@@ -93,14 +90,12 @@ function getExpFromJwt(cookieStr) {
     return -1;
 }
 
-// ISO 时间字符串 → 秒时间戳（对齐 Java KomiicUtils.toTimestamp）
 function toTimestamp(t) {
     var d = new Date(t);
     if (isNaN(d.getTime())) return -1;
     return Math.floor(d.getTime() / 1000);
 }
 
-// 登录态是否已过期：无 cookie → 过期；JWT exp 已到 → 过期；解析不出 exp → 保守视为未过期
 function checkExpired() {
     var l = getLogin();
     if (!l) return true;
@@ -114,7 +109,6 @@ function checkExpired() {
     return Math.floor(Date.now() / 1000) >= expired;
 }
 
-// 用已保存的账号密码自动重新登录；成功返回 true
 function relogin() {
     var l = getLogin();
     if (!l) return false;
@@ -127,10 +121,9 @@ function relogin() {
     return !!(r && r.success);
 }
 
-// 刷新 token(cookie)：POST /auth/refresh；失败（401/网络）则回退自动重登
 function refreshLogin() {
     var cookies = loginCookie();
-    if (!cookies) return false; // 无 cookie 无需刷新
+    if (!cookies) return false;
     var res = fetch(baseUrl + '/auth/refresh', {
         method: 'POST',
         contentType: 'application/json',
@@ -147,11 +140,10 @@ function refreshLogin() {
         log('[komiic] token refreshed, exp=' + exp);
         return true;
     }
-    // 刷新失败（401 等）→ 用保存的账号密码自动重登
     return relogin();
 }
 
-// 查询剩余可看页数（对齐 Java KomiicUtils.getImageLimit）；线路不通自动回退另一线路
+// 查询剩余可看页数
 function getImageLimitInfo() {
     var query = 'query getImageLimit {\n  getImageLimit {\n    limit\n    usage\n    resetInSeconds\n    __typename\n  }\n}';
     var lines = [baseUrl];
@@ -297,8 +289,6 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getImagesRequest(cid, path) {
-        // 记住漫画 cid（宿主传入，ReaderPresenter 传的是漫画 cid），
-        // 供 parseImages 拼图片防盗链 Referer：/comic/{漫画cid}/chapter/{章节path}
         if (cid) setState('cid', String(cid));
         var c = loginCookie();
         if (!c) {
@@ -315,13 +305,11 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     parseImages(html, chapterJson) {
         var list = [];
-        // chapterJson 可能是 JS 对象（宿主传入）或 JSON 字符串，兼容两种
         var chapter = chapterJson;
         if (typeof chapter === 'string') {
             try { chapter = JSON.parse(chapter) || {}; } catch (e) { chapter = {}; }
         }
         chapter = chapter || {};
-        // 漫画 cid（getImagesRequest 时已存），兜底用 chapter.cid / chapter.path
         var comicCid = getState('cid') || chapter.cid || chapter.path || '';
         try {
             var images = JSON.parse(html).data.imagesByChapterId;
@@ -357,7 +345,6 @@ var SOURCE = installSource(new (class extends MangaSource {
         var password = (params && params.password) || '';
         log('[login] account=' + username + ' hasPassword=' + (password ? 'yes' : 'no'));
         if (!username || !password) return { success: false, message: '请输入账号和密码' };
-        // 对齐原版 Java：网络失败时自动切换线路重试（komiic.com / komiic.cc）
         var lines = [baseUrl];
         var alt = otherBase();
         if (alt !== baseUrl) lines.push(alt);
@@ -377,7 +364,6 @@ var SOURCE = installSource(new (class extends MangaSource {
                 + ' setCookie=' + ((res && res.setCookie && res.setCookie.length) ? res.setCookie.length : 0));
             if (res && res.status === 200 && res.setCookie && res.setCookie.length > 0) {
                 var cookie = parseSetCookies(res.setCookie);
-                // 保存 exp（对齐 Java：优先 JWT 的 exp，其次 API 响应的 expire 字段）
                 var exp = getExpFromJwt(cookie);
                 if (exp === -1) {
                     try {
@@ -388,7 +374,6 @@ var SOURCE = installSource(new (class extends MangaSource {
                 var saved = { cookie: cookie, username: username, password: password };
                 if (exp !== -1) saved.exp = exp;
                 setLogin(JSON.stringify(saved));
-                // 记住当前可用线路，后续搜索/详情/图片都走它
                 if (lines[i] !== baseUrl) {
                     setSetting('line', lines[i] === KOMIIC_LINES[1] ? 'komiic.cc' : 'komiic.com');
                     log('[login] switched line to ' + lines[i]);
@@ -433,66 +418,111 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getCategories() {
+        // 使用完整的繁体中文分类列表（保留原 komiic 所有分类，并补充新增的分类）
         return {
             composite: true,
-            // 分类为 POST GraphQL，format 携带所选值（JSON），由 getCategoryRequest 使用
             format: '{"subject":"{subject}","progress":"{progress}","order":"{order}","page":"{page}"}',
             subject: [
-                { title: '全部', value: '' }, { title: '愛情', value: '1' },
-                { title: '後宮', value: '2' }, { title: '神鬼', value: '3' },
-                { title: '校園', value: '4' }, { title: '搞笑', value: '5' },
-                { title: '生活', value: '6' }, { title: '懸疑', value: '7' },
-                { title: '冒險', value: '8' }, { title: '恐怖', value: '9' },
-                { title: '職場', value: '10' }, { title: '魔幻', value: '11' },
-                { title: '魔法', value: '12' }, { title: '格鬥', value: '13' },
-                { title: '宅男', value: '14' }, { title: '勵志', value: '15' },
-                { title: '耽美', value: '16' }, { title: '科幻', value: '17' },
-                { title: '百合', value: '18' }, { title: '治癒', value: '19' },
-                { title: '萌系', value: '20' }, { title: '熱血', value: '21' },
-                { title: '競技', value: '22' }, { title: '推理', value: '23' },
-                { title: '雜誌', value: '24' }, { title: '偵探', value: '25' },
-                { title: '偽娘', value: '26' }, { title: '美食', value: '27' },
-                { title: '四格', value: '28' }, { title: '社會', value: '31' },
-                { title: '歷史', value: '32' }, { title: '戰爭', value: '33' },
-                { title: '舞蹈', value: '34' }, { title: '武俠', value: '35' },
-                { title: '機戰', value: '36' }, { title: '音樂', value: '37' },
-                { title: '體育', value: '40' }, { title: '黑道', value: '42' },
-                { title: '腐女', value: '46' }, { title: '異世界', value: '47' },
-                { title: '驚悚', value: '48' }, { title: '成人', value: '51' },
-                { title: '戰鬥', value: '54' }, { title: '復仇', value: '55' },
-                { title: '轉生', value: '56' }, { title: '黑暗奇幻', value: '57' },
-                { title: '戲劇', value: '58' }, { title: '生存', value: '59' },
-                { title: '策略', value: '60' }, { title: '政治', value: '61' },
-                { title: '黑暗', value: '62' }, { title: '動作', value: '64' },
-                { title: '性轉換', value: '70' }, { title: '日常', value: '78' },
-                { title: '青春', value: '81' }, { title: '醫療', value: '85' },
-                { title: '致鬱', value: '86' }, { title: '心理', value: '87' },
-                { title: '穿越', value: '88' }, { title: '友情', value: '92' },
-                { title: '犯罪', value: '93' }, { title: '劇情', value: '97' },
-                { title: '少女', value: '113' }, { title: '賭博', value: '114' },
-                { title: '女性向', value: '123' }, { title: '溫馨', value: '129' },
-                { title: '同人', value: '164' }, { title: '幻想', value: '183' },
-                { title: '成長', value: '184' }, { title: '心裡', value: '185' },
-                { title: '溫暖', value: '186' }, { title: '戀愛', value: '187' },
-                { title: '奇幻', value: '189' }, { title: '驚愕', value: '204' },
-                { title: '懷疑', value: '214' }, { title: '驚訝', value: '219' },
-                { title: '同性', value: '222' }, { title: '驚奇', value: '223' },
-                { title: '博彩', value: '227' }, { title: '末世', value: '232' }
+                { title: '全部', value: '' },
+                { title: '愛情', value: '1' },
+                { title: '後宮', value: '2' },
+                { title: '神鬼', value: '3' },
+                { title: '校園', value: '4' },
+                { title: '搞笑', value: '5' },
+                { title: '生活', value: '6' },
+                { title: '懸疑', value: '7' },
+                { title: '冒險', value: '8' },
+                { title: '恐怖', value: '9' },
+                { title: '職場', value: '10' },
+                { title: '魔幻', value: '11' },
+                { title: '魔法', value: '12' },
+                { title: '格鬥', value: '13' },
+                { title: '宅男', value: '14' },
+                { title: '勵志', value: '15' },
+                { title: '耽美', value: '16' },
+                { title: '科幻', value: '17' },
+                { title: '百合', value: '18' },
+                { title: '治癒', value: '19' },
+                { title: '萌系', value: '20' },
+                { title: '熱血', value: '21' },
+                { title: '競技', value: '22' },
+                { title: '推理', value: '23' },
+                { title: '雜誌', value: '24' },
+                { title: '偵探', value: '25' },
+                { title: '偽娘', value: '26' },
+                { title: '美食', value: '27' },
+                { title: '四格', value: '28' },
+                { title: '社會', value: '31' },
+                { title: '歷史', value: '32' },
+                { title: '戰爭', value: '33' },
+                { title: '舞蹈', value: '34' },
+                { title: '武俠', value: '35' },
+                { title: '機戰', value: '36' },
+                { title: '音樂', value: '37' },
+                { title: '體育', value: '40' },
+                { title: '黑道', value: '42' },
+                { title: '腐女', value: '46' },
+                { title: '異世界', value: '47' },
+                { title: '驚悚', value: '48' },
+                { title: '成人', value: '51' },
+                { title: '戰鬥', value: '54' },
+                { title: '復仇', value: '55' },
+                { title: '轉生', value: '56' },
+                { title: '黑暗奇幻', value: '57' },
+                { title: '戲劇', value: '58' },
+                { title: '生存', value: '59' },
+                { title: '策略', value: '60' },
+                { title: '政治', value: '61' },
+                { title: '黑暗', value: '62' },
+                { title: '動作', value: '64' },
+                { title: '性轉換', value: '70' },
+                { title: '日常', value: '78' },
+                { title: '青春', value: '81' },
+                { title: '醫療', value: '85' },
+                { title: '致鬱', value: '86' },
+                { title: '心理', value: '87' },
+                { title: '穿越', value: '88' },
+                { title: '友情', value: '92' },
+                { title: '犯罪', value: '93' },
+                { title: '劇情', value: '97' },
+                { title: '少女', value: '113' },
+                { title: '賭博', value: '114' },
+                { title: '女性向', value: '123' },
+                { title: '溫馨', value: '129' },
+                { title: '同人', value: '164' },
+                { title: '幻想', value: '183' },
+                { title: '成長', value: '184' },
+                { title: '心裡', value: '185' },
+                { title: '溫暖', value: '186' },
+                { title: '戀愛', value: '187' },
+                { title: '奇幻', value: '189' },
+                { title: '驚愕', value: '204' },
+                { title: '懷疑', value: '214' },
+                { title: '驚訝', value: '219' },
+                { title: '同性', value: '222' },
+                { title: '驚奇', value: '223' },
+                { title: '博彩', value: '227' },
+                { title: '末世', value: '232' },
+                { title: '親情', value: '247' },
+                { title: '青年', value: '246' },
+                { title: '宮廷', value: '255' },
+                { title: '家庭', value: '276' },
+                { title: '賽博龐克', value: '277' }
             ],
             progress: [
-                { title: '全部', value: '' }, { title: '連載', value: 'ONGOING' },
+                { title: '全部', value: '' },
+                { title: '連載', value: 'ONGOING' },
                 { title: '完結', value: 'END' }
             ],
             order: [
-                { title: '更新', value: 'DATE_UPDATED' }, { title: '觀看數', value: 'VIEWS' },
+                { title: '更新', value: 'DATE_UPDATED' },
+                { title: '觀看數', value: 'VIEWS' },
                 { title: '喜愛數', value: 'FAVORITE_COUNT' }
             ]
         };
     }
 
     getCategoryRequest(format, page) {
-        // 宿主已把 getCategories() 的 format 模板 {"subject":"{subject}","progress":"{progress}",
-        // "order":"{order}","page":"{page}"} 中的命名占位符替换为所选值，这里按名称解析。
         var opts = JSON.parse(format || '{}');
         var subject = opts.subject || '';
         var progress = opts.progress || '';
@@ -504,26 +534,43 @@ var SOURCE = installSource(new (class extends MangaSource {
             asc: false,
             status: progress
         };
-        // 主题为「全部」(subject='') 时 comicByCategories 传 categoryId:[''] 会因空 ID 报错
-        // (GqlIDToUint: parsing ""), 改用 hotComics（可返回全部并按 orderBy 排序）。
-        var isAll = subject === '';
-        var operation = isAll ? 'hotComics' : 'comicByCategories';
-        var query;
-        var variables;
-        if (isAll) {
-            variables = { pagination: pagination };
-            query = 'query hotComics($pagination: Pagination!) {\n  hotComics(pagination: $pagination) {\n    id title status year imageUrl\n    authors { id name __typename }\n    categories { id name __typename }\n    dateUpdated monthViews views favoriteCount lastBookUpdate lastChapterUpdate __typename\n  }\n}';
-        } else {
-            variables = { categoryId: [subject], pagination: pagination };
-            query = 'query comicByCategories($categoryId: [ID!]!, $pagination: Pagination!) {\n  comicByCategories(categoryId: $categoryId, pagination: $pagination) {\n    id title status year imageUrl\n    authors { id name __typename }\n    categories { id name __typename }\n    dateUpdated monthViews views favoriteCount lastBookUpdate lastChapterUpdate __typename\n  }\n}';
-        }
-        log('[category] ' + operation + ' subject=' + subject + ' order=' + order + ' page=' + page);
+
+        // 全部使用 comicByCategories（传入空数组表示全部）
+        var variables = {
+            categoryId: subject ? [subject] : [],
+            pagination: pagination
+        };
+        var query = `query comicByCategories($categoryId: [ID!]!, $pagination: Pagination!) {
+            comicByCategories(categoryId: $categoryId, pagination: $pagination) {
+                id
+                title
+                status
+                year
+                imageUrl
+                authors { id name __typename }
+                categories { id name __typename }
+                dateUpdated
+                monthViews
+                views
+                favoriteCount
+                recommendationCount
+                lastBookUpdate
+                lastChapterUpdate
+                contentType
+                imageCount
+                isFavorite
+                warnings
+                __typename
+            }
+        }`;
+
+        log('[category] comicByCategories subject=' + (subject || '全部') + ' order=' + order + ' page=' + page);
         return {
             url: baseUrl + '/api/query',
             method: 'POST',
             contentType: 'application/json',
             headers: authHeaders(),
-            body: jsonBody(operation, variables, query)
+            body: jsonBody('comicByCategories', variables, query)
         };
     }
 
@@ -531,8 +578,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         var list = [];
         try {
             var data = JSON.parse(html).data || {};
-            // 兼容两种返回字段：全部→hotComics，单主题→comicByCategories
-            var comics = data.hotComics || data.comicByCategories || [];
+            var comics = data.comicByCategories || [];
             for (var i = 0; i < comics.length; i++) {
                 list.push({
                     cid: comics[i].id,
