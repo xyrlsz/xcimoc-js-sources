@@ -107,6 +107,7 @@ var SOURCE = installSource(new (class extends MangaSource {
             var m = /^(https?:\/\/)?([^\/\s:]+)(:\d+)?(\/[a-z]comic\/.*)/.exec(imgUrl || '');
             if (m) {
                 imgUrl = m[1] + m[2] + imgQuality + m[4];
+                // imgUrl = m[1] + "ascn-a2.bzcdn.net" + imgQuality + m[4];
             }
             list.push({ url: imgUrl, lazy: false });
         }
