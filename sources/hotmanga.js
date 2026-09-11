@@ -60,6 +60,7 @@ var SOURCE = installSource(new (class extends MangaSource {
             author += body.author[i].name;
             if (i < body.author.length - 1) author += ', ';
         }
+        if (comicInfo.groups) setState('groups:' + cid, comicInfo.groups);
         return {
             title: body.name,
             cover: body.cover,
@@ -95,17 +96,28 @@ var SOURCE = installSource(new (class extends MangaSource {
             list.push({ title: array[i].name, path: array[i].uuid, group: '默认' });
         }
         try {
-            var groups = comic.note || {};
+            // 分组表来源：优先宿主透传的 note（新版宿主），否则读 parseInfo 暂存的 state 兜底
+            var groups = comic.note;
+            if (!groups || typeof groups !== 'object') {
+                groups = getState('groups:' + comic.cid) || {};
+            }
+            if (!groups || typeof groups !== 'object') groups = {};
             var keys = Object.keys(groups);
             for (var g = 0; g < keys.length; g++) {
                 var key = keys[g];
                 if (key === 'default') continue;
-                var group = groups[key];
-                var url = format('%s/api/v3/comic/%s/group/%s/chapters?limit=500&offset=0', api, comic.cid, group.path_word);
-                var resp = fetch(url, { headers: this.getHeader() });
-                var arr2 = JSON.parse(resp.body).results.list;
-                for (var j = 0; j < arr2.length; j++) {
-                    list.push({ title: arr2[j].name, path: arr2[j].uuid, group: group.name });
+                try {
+                    var group = groups[key];
+                    var url = format('%s/api/v3/comic/%s/group/%s/chapters?limit=500&offset=0', api, comic.cid, group.path_word);
+                    var resp = fetch(url, { headers: this.getHeader() });
+                    if (!resp || !resp.body) continue;
+                    var arr2 = JSON.parse(resp.body).results.list;
+                    for (var j = 0; j < arr2.length; j++) {
+                        list.push({ title: arr2[j].name, path: arr2[j].uuid, group: group.name });
+                    }
+                } catch (e2) {
+                    // 单个分组失败不影响其余分组
+                    log('[chapter] group ' + key + ' failed: ' + e2);
                 }
             }
         } catch (e) {

@@ -46,14 +46,14 @@
     {
       "type": 27,
       "title": "拷贝漫画Web",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "url": "sources/copymhweb.js",
       "baseUrl": "https://www.copy4000.com"
     },
     {
       "type": 102,
       "title": "热辣漫画",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "url": "sources/hotmanga.js",
       "baseUrl": "https://www.manga2026.com"
     },

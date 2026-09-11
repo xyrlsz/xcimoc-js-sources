@@ -203,6 +203,98 @@ var SOURCE = installSource(new (class extends MangaSource {
         return { 'user-agent': UA };
     }
 
+    getCategoryRequest(format, page) {
+        log('[category] req page=' + page + ' url=' + format);
+        return {
+            url: format,
+            headers: this.getHeader()
+        };
+    }
+
+    parseCategory(html, page) {
+        var list = [];
+        var body = DOM(html);
+        var target = body.select('div.row.exemptComic-box');
+        log('[category] htmlLen=' + (html ? html.length : 0)
+            + ' exemptComicBox=' + target.length);
+        if (target.length) {
+            var listAttr = (target[0].attr('list') || '')
+                .replace(/&#x27;/g, '"')
+                .replace(/&quot;/g, '"')
+                .replace(/'/g, '"'); // jsoup 可能已把 &#x27; 解码成单引号，一并转成双引号
+            log('[category] listAttr head=' + listAttr.slice(0, 200));
+            try {
+                var array = JSON.parse(listAttr);
+                for (var i = 0; i < array.length; i++) {
+                    list.push({
+                        cid: array[i].path_word,
+                        title: array[i].name,
+                        cover: array[i].cover
+                    });
+                }
+                log('[category] parsed ' + list.length + ' comics');
+            } catch (e) {
+                log('[category] list attr parse error: ' + e);
+            }
+        }
+        return list;
+    }
+
+    getCategories() {
+        return {
+            composite: true,
+            pageSize: 50,
+            format: website + '/comics?theme={subject}&status={progress}&region={area}&ordering={order}&offset={offset}&limit=50',
+            subject: [
+                { title: '全部', value: '' }, { title: '愛情', value: 'aiqing' },
+                { title: '歡樂向', value: 'huanlexiang' }, { title: '冒險', value: 'maoxian' },
+                { title: '奇幻', value: 'qihuan' }, { title: '百合', value: 'baihe' },
+                { title: '校园', value: 'xiaoyuan' }, { title: '科幻', value: 'kehuan' },
+                { title: '東方', value: 'dongfang' }, { title: '耽美', value: 'danmei' },
+                { title: '生活', value: 'shenghuo' }, { title: '格鬥', value: 'gedou' },
+                { title: '轻小说', value: 'qingxiaoshuo' }, { title: '悬疑', value: 'xuanyi' },
+                { title: '其他', value: 'qita' }, { title: '神鬼', value: 'shengui' },
+                { title: '职场', value: 'zhichang' }, { title: 'TL', value: 'teenslove' },
+                { title: '萌系', value: 'mengxi' }, { title: '治愈', value: 'zhiyu' },
+                { title: '長條', value: 'changtiao' }, { title: '四格', value: 'sige' },
+                { title: '节操', value: 'jiecao' }, { title: '舰娘', value: 'jianniang' },
+                { title: '竞技', value: 'jingji' }, { title: '搞笑', value: 'gaoxiao' },
+                { title: '伪娘', value: 'weiniang' }, { title: '热血', value: 'rexue' },
+                { title: '励志', value: 'lizhi' }, { title: '性转换', value: 'xingzhuanhuan' },
+                { title: '彩色', value: 'COLOR' }, { title: '後宮', value: 'hougong' },
+                { title: '美食', value: 'meishi' }, { title: '侦探', value: 'zhentan' },
+                { title: 'AA', value: 'aa' }, { title: '音乐舞蹈', value: 'yinyuewudao' },
+                { title: '魔幻', value: 'mohuan' }, { title: '战争', value: 'zhanzheng' },
+                { title: '历史', value: 'lishi' }, { title: '异世界', value: 'yishijie' },
+                { title: '惊悚', value: 'jingsong' }, { title: '机战', value: 'jizhan' },
+                { title: '都市', value: 'dushi' }, { title: '穿越', value: 'chuanyue' },
+                { title: '恐怖', value: 'kongbu' }, { title: 'C100', value: 'comiket100' },
+                { title: '重生', value: 'chongsheng' }, { title: 'C99', value: 'comiket99' },
+                { title: 'C101', value: 'comiket101' }, { title: 'C97', value: 'comiket97' },
+                { title: 'C96', value: 'comiket96' }, { title: '生存', value: 'shengcun' },
+                { title: '宅系', value: 'zhaixi' }, { title: '武侠', value: 'wuxia' },
+                { title: 'C98', value: 'C98' }, { title: 'C95', value: 'comiket95' },
+                { title: 'FATE', value: 'fate' }, { title: '转生', value: 'zhuansheng' },
+                { title: '無修正', value: 'Uncensored' }, { title: '仙侠', value: 'xianxia' },
+                { title: 'LoveLive', value: 'loveLive' }
+            ],
+            area: [
+                { title: '全部', value: '' }, { title: '日漫', value: '0' },
+                { title: '韩漫', value: '1' }, { title: '美漫', value: '2' }
+            ],
+            progress: [
+                { title: '全部', value: '' }, { title: '连载中', value: '0' },
+                { title: '已完结', value: '1' }, { title: '短篇', value: '2' }
+            ],
+            order: [
+                { title: '更新時間（倒序）', value: '-datetime_updated' },
+                { title: '熱度（倒序）', value: '-popular' },
+                { title: '更新時間', value: 'datetime_updated' },
+                { title: '熱度', value: 'popular' }
+            ]
+        };
+    }
+
     getSettings() {
         return [
             {
