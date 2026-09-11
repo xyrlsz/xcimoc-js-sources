@@ -9,10 +9,15 @@ QuickJS 引擎中执行），通过 GitHub raw API 在线分发，**无需重新
 ```
 xcimoc-js-sources/
 ├── index.json          # 源清单（客户端据此增量下载）
+├── source_sdk.js       # 源脚本 SDK（宿主能力 + 返回结构校验）
 ├── sources/
 │   ├── manhuagui.js    # 每个文件对应一个源
 │   ├── dm5.js
 │   └── ...             # 共 27 个源
+├── status/             # 漫画源可用性测试程序（Node，生成状态数据）
+├── debug/              # 本地 WebUI 调试器（Node + Playwright 渲染）
+├── docs/               # GitHub Pages 状态页（index.html + status.json）
+├── scripts/            # 校验脚本（validate / smoke / check_*）
 └── README.md
 ```
 
@@ -51,3 +56,20 @@ xcimoc-js-sources/
 ```bash
 node scripts/validate.mjs   # 校验 index.json 与所有脚本的 SOURCE 元数据/必需函数
 ```
+
+## 源可用性测试与状态页
+
+`status/` 提供可用性测试程序：按 App 的真实调用链（搜索 → 详情 → 章节 → 图片）
+联网测试每个源；GitHub Actions 每天定时运行测试，并把状态页发布到独立的
+**`gh-pages` 分支**（main 分支不会产生自动提交），页面模板为 `docs/index.html`。
+
+```bash
+cd status
+npm install
+node test_sources.mjs                    # 测试全部源 → 本地生成 ../docs/status.json
+node test_sources.mjs --only baozi --verbose   # 测试单个源并查看明细
+```
+
+- 状态：`ok` 可用 / `warn` 部分可用 / `fail` 失败 / `skip` 需 WebView 渲染无法验证
+- 状态页部署：Actions 手动触发一次 → Settings → Pages 选择 `gh-pages` 分支 `/`
+  （详细步骤与选项说明见 `status/README.md`）

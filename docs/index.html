@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>XCimoc 漫画源状态</title>
+    <meta name="color-scheme" content="light dark">
+    <style>
+        :root {
+            --bg: #f5f6f8;
+            --panel: #ffffff;
+            --text: #1b2432;
+            --muted: #667085;
+            --border: #e4e7ec;
+            --hover: #f7f9fc;
+            --ok: #0f7a55;
+            --ok-bg: #e3f5ed;
+            --warn: #a15c07;
+            --warn-bg: #fbf0dd;
+            --fail: #b42318;
+            --fail-bg: #fdecea;
+            --skip: #5d6b82;
+            --skip-bg: #eceff4;
+            --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .08);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0e1116;
+                --panel: #151a22;
+                --text: #e7eaf0;
+                --muted: #97a1b2;
+                --border: #242b36;
+                --hover: #1a2029;
+                --ok: #52d9a1;
+                --ok-bg: #0e2b20;
+                --warn: #f0b567;
+                --warn-bg: #2f2310;
+                --fail: #ff8377;
+                --fail-bg: #341713;
+                --skip: #9aa5b6;
+                --skip-bg: #1c222c;
+                --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 1px 3px rgba(0, 0, 0, .4);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        .container {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 28px 16px 48px;
+        }
+
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: .3px;
+        }
+
+        h1 .dot {
+            color: var(--ok);
+        }
+
+        .sub {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 12.5px;
+        }
+
+        .sub b {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            appearance: none;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 12.5px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+        }
+
+        .btn:hover {
+            background: var(--hover);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .stat {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            box-shadow: var(--shadow);
+        }
+
+        .stat .n {
+            font-size: 22px;
+            font-weight: 650;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.2;
+        }
+
+        .stat .l {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .stat.ok .n {
+            color: var(--ok);
+        }
+
+        .stat.warn .n {
+            color: var(--warn);
+        }
+
+        .stat.fail .n {
+            color: var(--fail);
+        }
+
+        .stat.skip .n {
+            color: var(--skip);
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .toolbar input[type="search"] {
+            flex: 1 1 220px;
+            min-width: 180px;
+            padding: 7px 12px;
+            font-size: 13px;
+            color: var(--text);
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .toolbar input[type="search"]:focus {
+            border-color: var(--muted);
+        }
+
+        .chips {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--muted);
+            border-radius: 999px;
+            padding: 5px 12px;
+            font-size: 12.5px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .chip.active {
+            color: var(--text);
+            border-color: var(--muted);
+            font-weight: 600;
+        }
+
+        .chip .c {
+            font-variant-numeric: tabular-nums;
+            opacity: .75;
+            margin-left: 2px;
+        }
+
+        .table-wrap {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .scroll {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 760px;
+        }
+
+        thead th {
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+            background: var(--panel);
+        }
+
+        tbody td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        tbody tr.row {
+            cursor: pointer;
+        }
+
+        tbody tr.row:hover {
+            background: var(--hover);
+        }
+
+        tbody tr.row:focus-visible {
+            outline: 2px solid var(--muted);
+            outline-offset: -2px;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .name {
+            font-weight: 600;
+        }
+
+        .file {
+            color: var(--muted);
+            font-size: 11.5px;
+            margin-top: 1px;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        }
+
+        .num {
+            font-variant-numeric: tabular-nums;
+            color: var(--muted);
+        }
+
+        .note {
+            color: var(--muted);
+            font-size: 12.5px;
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .note.bad {
+            color: var(--fail);
+        }
+
+        .note.warn {
+            color: var(--warn);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge.ok {
+            color: var(--ok);
+            background: var(--ok-bg);
+        }
+
+        .badge.warn {
+            color: var(--warn);
+            background: var(--warn-bg);
+        }
+
+        .badge.fail {
+            color: var(--fail);
+            background: var(--fail-bg);
+        }
+
+        .badge.skip {
+            color: var(--skip);
+            background: var(--skip-bg);
+        }
+
+        .badge .b-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .steps {
+            display: inline-flex;
+            gap: 5px;
+        }
+
+        .st {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11.5px;
+            font-weight: 700;
+        }
+
+        .st.ok {
+            color: var(--ok);
+            background: var(--ok-bg);
+        }
+
+        .st.warn {
+            color: var(--warn);
+            background: var(--warn-bg);
+        }
+
+        .st.fail {
+            color: var(--fail);
+            background: var(--fail-bg);
+        }
+
+        .st.skip {
+            color: var(--skip);
+            background: var(--skip-bg);
+        }
+
+        .st.pending {
+            color: var(--muted);
+            background: var(--skip-bg);
+        }
+
+        tr.detail td {
+            background: var(--hover);
+            padding: 4px 12px 14px;
+        }
+
+        .detail-grid {
+            display: grid;
+            gap: 6px;
+            padding: 10px 2px 2px;
+        }
+
+        .dstep {
+            display: grid;
+            grid-template-columns: 64px 46px 74px 74px 1fr;
+            gap: 8px;
+            align-items: baseline;
+            font-size: 12.5px;
+        }
+
+        .dstep .dn {
+            font-weight: 600;
+        }
+
+        .dstep .ds-ok {
+            color: var(--ok);
+        }
+
+        .dstep .ds-warn {
+            color: var(--warn);
+        }
+
+        .dstep .ds-fail {
+            color: var(--fail);
+        }
+
+        .dstep .ds-skip {
+            color: var(--skip);
+        }
+
+        .dstep .dm {
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .dstep .de {
+            color: var(--fail);
+            overflow-wrap: anywhere;
+        }
+
+        .dstep .dd {
+            color: var(--muted);
+            overflow-wrap: anywhere;
+        }
+
+        .dlog {
+            margin-top: 6px;
+        }
+
+        .dlog .lg {
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 11.5px;
+            color: var(--warn);
+            overflow-wrap: anywhere;
+        }
+
+        .dhint {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        .empty {
+            padding: 40px 16px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 13.5px;
+        }
+
+        .empty .big {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .empty code {
+            background: var(--skip-bg);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        footer {
+            margin-top: 18px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        footer a {
+            text-decoration: underline dotted;
+        }
+
+        @media (min-width: 760px) {
+            h1 {
+                font-size: 26px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1><span class="dot">●</span> XCimoc 漫画源状态</h1>
+                <p class="sub" id="meta">加载中…</p>
+            </div>
+            <div class="actions">
+                <button class="btn" id="refresh" type="button">刷新</button>
+                <a class="btn" id="json-link" href="status.json" target="_blank" rel="noopener">status.json</a>
+            </div>
+        </header>
+
+        <section class="stats" id="stats" hidden></section>
+
+        <section class="toolbar" id="toolbar" hidden>
+            <input type="search" id="q" placeholder="搜索源名 / 文件名 / type…" aria-label="搜索源">
+            <div class="chips" id="chips"></div>
+        </section>
+
+        <main class="table-wrap">
+            <div class="scroll">
+                <table id="table" hidden>
+                    <thead>
+                        <tr>
+                            <th>状态</th>
+                            <th>漫画源</th>
+                            <th>Type</th>
+                            <th>版本</th>
+                            <th>搜索</th>
+                            <th>详情</th>
+                            <th>章节</th>
+                            <th>图片</th>
+                            <th>耗时</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+            <div class="empty" id="empty">
+                <div class="big">📭</div>
+                <div id="empty-text">暂无数据</div>
+            </div>
+        </main>
+
+        <footer>
+            <div>测试方式：模拟 App 的真实调用链 — <b>搜索 → 详情 → 章节 → 图片</b>，每步执行「构建请求 → 发起 HTTP → 解析 HTML」并校验返回结构；数据由
+                <code>status/test_sources.mjs</code> 生成。</div>
+            <div>说明：状态为「跳过」的源需要 WebView 渲染（Cloudflare 等），自动化环境无法验证；「部分可用」通常表示搜索关键词无结果或个别步骤需渲染。结果受服务器网络环境与反爬策略影响，仅供参考。
+            </div>
+            <div>仓库：<a id="repo-link"
+                    href="https://github.com/xyrlsz/xcimoc-js-sources">github.com/xyrlsz/xcimoc-js-sources</a></div>
+        </footer>
+    </div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            var STATUS_ORDER = ['ok', 'warn', 'fail', 'skip'];
+            var STATUS_LABEL = { ok: '可用', warn: '部分可用', fail: '失败', skip: '跳过' };
+            var STEP_LABEL = { search: '搜索', info: '详情', chapter: '章节', images: '图片' };
+            var STEP_ICON = { ok: '✓', warn: '!', fail: '✗', skip: '–', pending: '·' };
+
+            var data = null;
+            var filterStatus = 'all';
+            var filterText = '';
+
+            var $ = function (id) { return document.getElementById(id); };
+
+            function el(tag, cls, text) {
+                var n = document.createElement(tag);
+                if (cls) n.className = cls;
+                if (text !== undefined && text !== null) n.textContent = text;
+                return n;
+            }
+
+            function fmtTime(iso) {
+                try {
+                    var d = new Date(iso);
+                    if (isNaN(d.getTime())) return iso;
+                    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+                    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' '
+                        + pad(d.getHours()) + ':' + pad(d.getMinutes());
+                } catch (e) { return iso; }
+            }
+
+            function fmtDuration(ms) {
+                if (!ms || ms < 0) return '—';
+                if (ms < 1000) return ms + 'ms';
+                return (ms / 1000).toFixed(1) + 's';
+            }
+
+            function renderMeta() {
+                var meta = $('meta');
+                meta.textContent = '';
+                if (!data) { meta.textContent = '加载中…'; return; }
+                var s = data.summary || {};
+                meta.appendChild(document.createTextNode('共 ' + (s.total || 0) + ' 个源 · 更新于 '));
+                var b = el('b', null, fmtTime(data.generatedAt));
+                meta.appendChild(b);
+                var src = data.runner === 'github-actions' ? 'GitHub Actions' : '本地';
+                meta.appendChild(document.createTextNode(' · 关键词「' + (data.keyword || '-') + '」 · 用时 '
+                    + fmtDuration(data.durationMs) + ' · ' + src + '运行'));
+            }
+
+            function renderStats() {
+                var s = data.summary || {};
+                var box = $('stats');
+                box.hidden = false;
+                box.textContent = '';
+                var cells = [
+                    { k: 'total', l: '全部源', cls: '' },
+                    { k: 'ok', l: '可用', cls: 'ok' },
+                    { k: 'warn', l: '部分可用', cls: 'warn' },
+                    { k: 'fail', l: '失败', cls: 'fail' },
+                    { k: 'skip', l: '跳过', cls: 'skip' }
+                ];
+                cells.forEach(function (c) {
+                    var d = el('div', 'stat' + (c.cls ? ' ' + c.cls : ''));
+                    d.appendChild(el('div', 'n', String(s[c.k] || 0)));
+                    d.appendChild(el('div', 'l', c.l));
+                    box.appendChild(d);
+                });
+            }
+
+            function renderChips() {
+                var s = data.summary || {};
+                var box = $('chips');
+                box.textContent = '';
+                var chips = [{ k: 'all', l: '全部', n: s.total || 0 }]
+                    .concat(STATUS_ORDER.map(function (k) { return { k: k, l: STATUS_LABEL[k], n: s[k] || 0 }; })
+                        .filter(function (c) { return c.n > 0; }));
+                chips.forEach(function (c) {
+                    var b = el('button', 'chip' + (filterStatus === c.k ? ' active' : ''), c.l);
+                    b.type = 'button';
+                    b.appendChild(el('span', 'c', c.n));
+                    b.addEventListener('click', function () {
+                        filterStatus = c.k;
+                        renderChips();
+                        renderRows();
+                    });
+                    box.appendChild(b);
+                });
+            }
+
+            function stepCell(steps, name) {
+                var st = null;
+                for (var i = 0; i < (steps || []).length; i++) {
+                    if (steps[i].name === name) { st = steps[i]; break; }
+                }
+                var status = st ? st.status : 'pending';
+                var n = el('span', 'st ' + status, STEP_ICON[status] || '·');
+                var title = STEP_LABEL[name] + '：' + (st ? statusText(st) : '未测试');
+                n.title = title;
+                return n;
+            }
+
+            function statusText(st) {
+                var t = STATUS_LABEL[st.status] || st.status;
+                if (st.detail) t += ' · ' + st.detail;
+                if (st.error) t += ' · ' + st.error;
+                return t;
+            }
+
+            function matches(r) {
+                if (filterStatus !== 'all' && r.status !== filterStatus) return false;
+                if (!filterText) return true;
+                var q = filterText.toLowerCase();
+                return (r.title || '').toLowerCase().indexOf(q) >= 0
+                    || String(r.type).indexOf(q) >= 0
+                    || (r.url || '').toLowerCase().indexOf(q) >= 0;
+            }
+
+            function buildRow(r) {
+                var tr = el('tr', 'row');
+                tr.tabIndex = 0;
+                tr.dataset.type = String(r.type);
+
+                var tdStatus = el('td');
+                var badge = el('span', 'badge ' + r.status);
+                badge.appendChild(el('span', 'b-dot'));
+                badge.appendChild(el('span', null, STATUS_LABEL[r.status] || r.status));
+                tdStatus.appendChild(badge);
+                tr.appendChild(tdStatus);
+
+                var tdName = el('td');
+                tdName.appendChild(el('div', 'name', r.title || ('type ' + r.type)));
+                tdName.appendChild(el('div', 'file', r.url || ''));
+                tr.appendChild(tdName);
+
+                tr.appendChild(el('td', 'num', String(r.type)));
+                tr.appendChild(el('td', 'num', r.version || '—'));
+
+                ['search', 'info', 'chapter', 'images'].forEach(function (name) {
+                    var td = el('td');
+                    var wrap = el('span', 'steps');
+                    wrap.appendChild(stepCell(r.steps, name));
+                    td.appendChild(wrap);
+                    tr.appendChild(td);
+                });
+
+                tr.appendChild(el('td', 'num', fmtDuration(r.durationMs)));
+
+                var tdNote = el('td');
+                var note = el('div', 'note' + (r.status === 'fail' ? ' bad' : r.status === 'warn' ? ' warn' : ''), r.error || '');
+                if (r.error) note.title = r.error;
+                tdNote.appendChild(note);
+                tr.appendChild(tdNote);
+
+                var expanded = false;
+                var detail = null;
+                function toggle() {
+                    if (expanded) {
+                        if (detail) { detail.remove(); detail = null; }
+                        expanded = false;
+                        return;
+                    }
+                    detail = buildDetail(r);
+                    tr.parentNode.insertBefore(detail, tr.nextSibling);
+                    expanded = true;
+                }
+                tr.addEventListener('click', toggle);
+                tr.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+                });
+                return tr;
+            }
+
+            function buildDetail(r) {
+                var tr = el('tr', 'detail');
+                var td = el('td');
+                td.colSpan = 10;
+                var grid = el('div', 'detail-grid');
+
+                (r.steps || []).forEach(function (st) {
+                    var row = el('div', 'dstep');
+                    row.appendChild(el('div', 'dn', STEP_LABEL[st.name] || st.name));
+                    row.appendChild(el('div', 'ds-' + st.status, STATUS_LABEL[st.status] || st.status));
+                    row.appendChild(el('div', 'dm', fmtDuration(st.ms)));
+                    row.appendChild(el('div', 'dm', st.http ? 'HTTP ' + st.http : '—'));
+                    var tail = el('div', st.error ? 'de' : 'dd');
+                    tail.textContent = st.error || st.detail || '';
+                    row.appendChild(tail);
+                    grid.appendChild(row);
+                });
+
+                if (!r.steps || r.steps.length === 0) {
+                    grid.appendChild(el('div', 'dhint', r.error || '无步骤数据（测试未开始或进程异常）'));
+                }
+
+                if (r.logs && r.logs.length > 0) {
+                    var logBox = el('div', 'dlog');
+                    r.logs.forEach(function (l) {
+                        logBox.appendChild(el('div', 'lg', l));
+                    });
+                    grid.appendChild(logBox);
+                }
+
+                var hint = el('div', 'dhint');
+                hint.textContent = '基础地址：' + (r.baseUrl || '—');
+                grid.appendChild(hint);
+
+                td.appendChild(grid);
+                tr.appendChild(td);
+                return tr;
+            }
+
+            function renderRows() {
+                var tbody = $('tbody');
+                tbody.textContent = '';
+                var list = (data.sources || []).filter(matches);
+                $('empty').hidden = list.length > 0;
+                if (list.length === 0) {
+                    $('empty-text').textContent = (data.sources || []).length === 0
+                        ? '暂无数据：请先运行 status/test_sources.mjs 生成 status.json'
+                        : '没有匹配的源（试试调整过滤条件）';
+                    return;
+                }
+                list.forEach(function (r) { tbody.appendChild(buildRow(r)); });
+            }
+
+            function renderAll() {
+                if (!data) return;
+                $('table').hidden = false;
+                $('toolbar').hidden = false;
+                renderMeta();
+                renderStats();
+                renderChips();
+                renderRows();
+            }
+
+            function showError(msg) {
+                $('empty').hidden = false;
+                $('empty-text').innerHTML = msg;
+            }
+
+            function load() {
+                // 支持内联数据（离线预览/嵌入场景）：在页面中预置 window.__STATUS_DATA__ 数据对象即可
+                if (window.__STATUS_DATA__) {
+                    data = window.__STATUS_DATA__;
+                    $('empty').hidden = true;
+                    renderAll();
+                    return;
+                }
+                fetch('status.json', { cache: 'no-store' })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
+                    .then(function (json) {
+                        data = json;
+                        $('empty').hidden = true;
+                        renderAll();
+                    })
+                    .catch(function (e) {
+                        $('meta').textContent = '加载 status.json 失败';
+                        showError('无法加载 <code>status.json</code>（' + String(e && e.message || e) + '）。<br>'
+                            + '请通过 HTTP 访问本页（GitHub Pages 或本地 <code>python -m http.server</code>），'
+                            + '并确认已运行 <code>node status/test_sources.mjs</code> 生成数据。');
+                    });
+            }
+
+            $('q').addEventListener('input', function (e) {
+                filterText = e.target.value.trim();
+                renderRows();
+            });
+            $('refresh').addEventListener('click', load);
+            var repo = 'https://github.com/xyrlsz/xcimoc-js-sources';
+            $('repo-link').href = repo;
+            load();
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,68 @@
+name: 漫画源状态
+
+# 定期测试全部漫画源的可用性，并把状态页发布到独立的 gh-pages 分支。
+# 测试在 main 上运行（读取 sources/），但结果只推送到 gh-pages ——
+# main 分支不会产生任何自动提交。
+#
+# 使用前提（仓库设置，一次性）：
+#   Settings → Pages → Build and deployment → Source: Deploy from a branch
+#   分支选择 gh-pages、目录选择 / (root)
+# 首次使用：先在 Actions 里手动触发一次本 workflow（会创建 gh-pages 分支），
+# 再去 Pages 设置中选择该分支。
+
+on:
+    schedule:
+        # 每天 21:17 UTC（北京时间 05:17）测试一次
+        - cron: "17 21 * * *"
+    workflow_dispatch:
+    push:
+        branches: [main]
+        paths:
+            - "sources/**"
+            - "index.json"
+            - "source_sdk.js"
+            - "status/**"
+            - "docs/index.html"
+            - ".github/workflows/source-status.yml"
+
+permissions:
+    contents: write
+
+concurrency:
+    group: source-status
+    cancel-in-progress: true
+
+jobs:
+    test:
+        name: 测试漫画源并发布
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            - name: 检出仓库（main）
+              uses: actions/checkout@v4
+
+            - name: 安装 Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+
+            - name: 安装依赖
+              working-directory: status
+              run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+
+            - name: 组装站点目录并测试全部源
+              run: |
+                  mkdir -p _site
+                  cp docs/index.html _site/index.html
+                  touch _site/.nojekyll
+                  node status/test_sources.mjs --out _site/status.json
+
+            - name: 发布到 gh-pages 分支
+              run: |
+                  cd _site
+                  git init -b gh-pages
+                  git config user.name 'github-actions[bot]'
+                  git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+                  git add -A
+                  git commit -m "chore(status): 更新漫画源可用状态 $(date -u '+%Y-%m-%d %H:%M UTC')"
+                  git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages

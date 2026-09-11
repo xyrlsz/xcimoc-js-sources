@@ -1,0 +1,17 @@
+{
+    "name": "xcimoc-js-status",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "description": "XCimoc 动态漫画源可用性测试程序：按 App 的真实调用链（搜索→详情→章节→图片）测试每个源，生成 docs/status.json 供 GitHub Pages 展示",
+    "scripts": {
+        "test": "node test_sources.mjs",
+        "test:one": "node test_sources.mjs --only"
+    },
+    "dependencies": {
+        "cheerio": "^1.0.0"
+    },
+    "engines": {
+        "node": ">=18"
+    }
+}
