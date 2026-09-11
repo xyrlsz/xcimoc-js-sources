@@ -14,7 +14,9 @@
  * 选项：
  *   --only <list>       只测试指定源：type 数字或源文件名（逗号分隔，如 baozi,101）
  *   --exclude <list>    排除指定源（同 --only 格式）
- *   --keyword <kw>      搜索测试关键词（默认「漫画」）
+ *   --keyword <kw>      搜索测试关键词（默认「漫画」，可被测试数据文件覆盖）
+ *   --data <file>       自定义测试数据文件（默认 status/test_data.json；不存在则按默认流程）
+ *   --no-data           禁用自定义测试数据（完全按默认流程）
  *   --concurrency <n>   并发测试的源数量（默认 4）
  *   --timeout <ms>      单个 HTTP 请求超时（默认 30000）
  *   --out <file>        状态 JSON 输出路径（默认 ../docs/status.json）
@@ -25,18 +27,20 @@
  *
  * 内部参数（供本程序自身调度，请勿直接使用）：
  *   --single <type>     测试单个源并向 stdout 输出一行 JSON 结果
+ *   --case <json>       单个源的自定义测试数据（主进程从 --data 文件解析后传入）
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { testSource } from './lib/runner.mjs';
+import { testSource, normalizeCase } from './lib/runner.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..'); // xcimoc-js-sources/
 const INDEX_PATH = join(ROOT, 'index.json');
 const SDK_PATH = join(ROOT, 'source_sdk.js');
 const DEFAULT_OUT = join(ROOT, 'docs', 'status.json');
+const DEFAULT_DATA = join(__dirname, 'test_data.json');
 
 const ICON = { ok: '✅', warn: '⚠️', fail: '❌', skip: '⏭️' };
 const LABEL = { ok: '可用', warn: '部分可用', fail: '失败', skip: '跳过' };
@@ -60,10 +64,14 @@ function parseArgs(argv) {
     const opts = {
         only: [],
         exclude: [],
-        keyword: '漫画',
+        keyword: null,
         concurrency: 4,
         timeout: 30000,
         out: DEFAULT_OUT,
+        data: DEFAULT_DATA,
+        dataExplicit: false,
+        noData: false,
+        caseJson: null,
         json: false,
         noWrite: false,
         verbose: false,
@@ -76,7 +84,10 @@ function parseArgs(argv) {
         switch (a) {
             case '--only': opts.only.push(...String(next() || '').split(',')); break;
             case '--exclude': opts.exclude.push(...String(next() || '').split(',')); break;
-            case '--keyword': opts.keyword = String(next() || '漫画'); break;
+            case '--keyword': opts.keyword = String(next() || '').trim() || null; break;
+            case '--data': opts.data = String(next() || DEFAULT_DATA); opts.dataExplicit = true; break;
+            case '--no-data': opts.noData = true; break;
+            case '--case': opts.caseJson = String(next() || ''); break;
             case '--concurrency': opts.concurrency = Math.max(1, Number(next()) || 4); break;
             case '--timeout': opts.timeout = Math.max(1000, Number(next()) || 30000); break;
             case '--out': opts.out = String(next() || DEFAULT_OUT); break;
@@ -124,12 +135,71 @@ function selectEntries(index, opts) {
     return list;
 }
 
+/* ---------------- 测试数据（test_data.json） ---------------- */
+
+/**
+ * 读取自定义测试数据文件；未提供/不存在（且未显式指定）时返回空配置，
+ * 所有源按默认流程测试。
+ *
+ * 文件结构：
+ * {
+ *   "defaults": { "keyword": "漫画" },
+ *   "sources": {
+ *     "0": { "keyword": "海贼王" },
+ *     "12": { "cid": "594697", "chapterPath": "46350", "note": "固定测试样章" },
+ *     "49": { "skipSearch": true, "cid": "106327" }
+ *   }
+ * }
+ * sources 的键为源 type；字段含义见 lib/runner.mjs 头部注释。
+ */
+function loadTestData(opts) {
+    const empty = { file: null, keyword: null, count: 0, caseOf: () => null };
+    if (opts.noData || !opts.data) return empty;
+    if (!existsSync(opts.data)) {
+        if (opts.dataExplicit) throw new Error('测试数据文件不存在: ' + opts.data);
+        return empty;
+    }
+    let raw;
+    try {
+        raw = JSON.parse(readFileSync(opts.data, 'utf8'));
+    } catch (e) {
+        throw new Error('测试数据文件解析失败: ' + opts.data + ' :: ' + e.message);
+    }
+    const sources = (raw && typeof raw.sources === 'object' && raw.sources) || {};
+    const cases = new Map();
+    for (const key of Object.keys(sources)) {
+        const c = normalizeCase(sources[key]);
+        if (c) cases.set(String(key).trim(), c);
+    }
+    const keyword = raw && raw.defaults && typeof raw.defaults.keyword === 'string' && raw.defaults.keyword.trim()
+        ? raw.defaults.keyword.trim()
+        : null;
+    return {
+        file: opts.data,
+        keyword,
+        count: cases.size,
+        caseOf(entry) {
+            return cases.get(String(entry.type)) || null;
+        },
+    };
+}
+
 /* ---------------- 单源模式（子进程） ---------------- */
 
 function runSingle(opts) {
     const index = JSON.parse(readFileSync(INDEX_PATH, 'utf8'));
     const entry = index.sources.find((e) => String(e.type) === opts.single)
         || index.sources.find((e) => matchesToken(e, opts.single));
+
+    /* 自定义测试数据由主进程通过 --case 传入（JSON 文本） */
+    let testCase = null;
+    if (opts.caseJson) {
+        try {
+            testCase = normalizeCase(JSON.parse(opts.caseJson));
+        } catch (e) {
+            /* 非法 JSON：按无自定义数据处理 */
+        }
+    }
 
     let result;
     if (!entry) {
@@ -143,11 +213,19 @@ function runSingle(opts) {
             durationMs: 0,
             steps: [],
             logs: [],
+            case: testCase,
         };
     } else {
         const sdk = readFileSync(SDK_PATH, 'utf8');
         try {
-            result = testSource({ root: ROOT, sdk, entry, keyword: opts.keyword, timeoutMs: opts.timeout });
+            result = testSource({
+                root: ROOT,
+                sdk,
+                entry,
+                keyword: opts.keyword || '漫画',
+                timeoutMs: opts.timeout,
+                testCase,
+            });
         } catch (e) {
             result = {
                 type: entry.type,
@@ -159,6 +237,7 @@ function runSingle(opts) {
                 durationMs: 0,
                 steps: [],
                 logs: [],
+                case: testCase,
             };
         }
     }
@@ -169,14 +248,20 @@ function runSingle(opts) {
 
 /* ---------------- 主模式：并发调度 ---------------- */
 
-function spawnSingle(entry, opts) {
+function spawnSingle(entry, opts, testCase) {
     return new Promise((resolve) => {
+        /* 统一出口：补上自定义测试数据标记（子进程异常时页面上仍能看到） */
+        const done = (r) => {
+            if (testCase && !r.case) r.case = testCase;
+            resolve(r);
+        };
         const args = [
             fileURLToPath(import.meta.url),
             '--single', String(entry.type),
             '--keyword', opts.keyword,
             '--timeout', String(opts.timeout),
         ];
+        if (testCase) args.push('--case', JSON.stringify(testCase));
         let child;
         try {
             child = spawn(process.execPath, args, {
@@ -185,7 +270,7 @@ function spawnSingle(entry, opts) {
                 stdio: ['ignore', 'pipe', 'pipe'],
             });
         } catch (e) {
-            return resolve(failResult(entry, '子进程启动失败: ' + e.message));
+            return done(failResult(entry, '子进程启动失败: ' + e.message));
         }
 
         const t0 = Date.now();
@@ -203,22 +288,22 @@ function spawnSingle(entry, opts) {
         child.stderr.on('data', (d) => { stderr += d; });
         child.on('error', (e) => {
             clearTimeout(timer);
-            resolve(failResult(entry, '子进程错误: ' + e.message));
+            done(failResult(entry, '子进程错误: ' + e.message));
         });
         child.on('close', (code) => {
             clearTimeout(timer);
             if (killed) {
-                return resolve(failResult(entry, '测试超时（>' + Math.round(hardMs / 1000) + 's）', Date.now() - t0));
+                return done(failResult(entry, '测试超时（>' + Math.round(hardMs / 1000) + 's）', Date.now() - t0));
             }
             const line = stdout.trim().split('\n').pop();
             if (!line) {
                 const tail = stderr ? ' :: ' + stderr.trim().split('\n').slice(-3).join(' | ') : '';
-                return resolve(failResult(entry, '测试进程无输出（exit=' + code + '）' + tail, Date.now() - t0));
+                return done(failResult(entry, '测试进程无输出（exit=' + code + '）' + tail, Date.now() - t0));
             }
             try {
-                resolve(JSON.parse(line));
+                done(JSON.parse(line));
             } catch (e) {
-                resolve(failResult(entry, '结果解析失败: ' + e.message + ' :: ' + line.slice(0, 200), Date.now() - t0));
+                done(failResult(entry, '结果解析失败: ' + e.message + ' :: ' + line.slice(0, 200), Date.now() - t0));
             }
         });
     });
@@ -312,16 +397,29 @@ async function main() {
         return 1;
     }
 
+    let testData;
+    try {
+        testData = loadTestData(opts);
+    } catch (e) {
+        console.error(String((e && e.message) || e));
+        return 1;
+    }
+    const keyword = opts.keyword || testData.keyword || '漫画';
+    opts.keyword = keyword;
+
     const t0 = Date.now();
     console.log('XCimoc 漫画源状态测试');
-    console.log('源数量: ' + entries.length + '，关键词「' + opts.keyword + '」，并发 ' + opts.concurrency
+    console.log('源数量: ' + entries.length + '，关键词「' + keyword + '」，并发 ' + opts.concurrency
         + '，单请求超时 ' + opts.timeout + 'ms');
+    if (testData.file) {
+        console.log('测试数据: ' + relative(ROOT, testData.file).replace(/\\/g, '/') + '（' + testData.count + ' 个源使用自定义数据）');
+    }
     if (entries.length > 0 && opts.only.length + opts.exclude.length > 0) {
         console.log('筛选: ' + entries.map((e) => e.title + '(' + e.type + ')').join(', '));
     }
     console.log('');
 
-    const results = await runPool(entries, opts.concurrency, (entry) => spawnSingle(entry, opts));
+    const results = await runPool(entries, opts.concurrency, (entry) => spawnSingle(entry, opts, testData.caseOf(entry)));
 
     const totalMs = Date.now() - t0;
     const summary = summarize(results);
@@ -350,7 +448,8 @@ async function main() {
     const payload = {
         schemaVersion: 1,
         generatedAt: new Date().toISOString(),
-        keyword: opts.keyword,
+        keyword,
+        dataFile: testData.file ? relative(ROOT, testData.file).replace(/\\/g, '/') : null,
         runner: process.env.GITHUB_ACTIONS ? 'github-actions' : 'local',
         node: process.version,
         durationMs: totalMs,

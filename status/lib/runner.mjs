@@ -11,6 +11,14 @@
  * 引擎生命周期对齐 App：每阶段独立引擎；详情 + 章节共享同一引擎（对应详情会话）。
  * 宿主请求的 headers = 源请求声明的 headers 覆盖 getHeader() 的返回值（getHeader 兜底）。
  *
+ * 自定义测试数据（testCase，来自 status/test_data.json 的 sources[type]，可选）：
+ *   keyword      该源专用搜索关键词（覆盖全局关键词）
+ *   cid          固定详情 cid（配置后详情/章节/图片均用它；搜索未通过时降级为告警继续）
+ *   chapterPath  固定章节 path（图片阶段直接使用；章节解析失败时降级为告警）
+ *   skipSearch   跳过搜索步骤（需同时配置 cid）
+ *   note         备注（随结果输出，页面展示）
+ * 未配置任何字段的源完全按默认流程测试。
+ *
  * 状态判定：
  *   ok   关键链路的每个步骤都通过
  *   warn 链路可走通但有告警（搜索无结果、图片项为懒加载、部分步骤需 WebView 被跳过等）
@@ -28,6 +36,21 @@ const MAX_TEXT = 300;
 function clip(s) {
     const t = String(s === null || s === undefined ? '' : s);
     return t.length > MAX_TEXT ? t.slice(0, MAX_TEXT) + '…' : t;
+}
+
+/**
+ * 规范化自定义测试数据（status/test_data.json → sources[type]）：
+ * 仅保留已知字段；全部为空时返回 null（该源按默认流程测试）。
+ */
+export function normalizeCase(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const out = {};
+    if (typeof raw.keyword === 'string' && raw.keyword.trim()) out.keyword = raw.keyword.trim();
+    if (raw.cid !== undefined && raw.cid !== null && String(raw.cid).trim()) out.cid = String(raw.cid).trim();
+    if (typeof raw.chapterPath === 'string' && raw.chapterPath.trim()) out.chapterPath = raw.chapterPath.trim();
+    if (raw.skipSearch === true) out.skipSearch = true;
+    if (typeof raw.note === 'string' && raw.note.trim()) out.note = raw.note.trim().slice(0, 200);
+    return Object.keys(out).length > 0 ? out : null;
 }
 
 function newStep(result, name) {
@@ -104,10 +127,12 @@ function finalize(result, t0) {
 
 /**
  * 测试单个源。
- * @param {{root:string, sdk:string, entry:object, keyword:string, timeoutMs:number}} options
+ * @param {{root:string, sdk:string, entry:object, keyword:string, timeoutMs:number, testCase?:object|null}} options
+ *        testCase 为该源的自定义测试数据（可选，见文件头注释）
  * @returns 结果对象（可直接序列化进 status.json）
  */
-export function testSource({ root, sdk, entry, keyword, timeoutMs }) {
+export function testSource({ root, sdk, entry, keyword, timeoutMs, testCase = null }) {
+    testCase = normalizeCase(testCase);
     const t0 = Date.now();
     const result = {
         type: entry.type,
@@ -120,6 +145,7 @@ export function testSource({ root, sdk, entry, keyword, timeoutMs }) {
         durationMs: 0,
         steps: [],
         logs: [],
+        case: testCase,
     };
     const logs = [];
     const collect = (engine) => {
@@ -171,73 +197,92 @@ export function testSource({ root, sdk, entry, keyword, timeoutMs }) {
     }
 
     /* ---------- 搜索 ---------- */
+    const kw = testCase && testCase.keyword ? testCase.keyword : keyword;
+    let items = null;
     let tStep = Date.now();
-    let searchReq;
-    try {
-        searchReq = engine.call('getSearchRequest', keyword, 1);
-    } catch (e) {
-        sSearch.status = 'fail';
-        sSearch.error = 'getSearchRequest 异常: ' + e.message;
-        collect(engine);
-        result.error = sSearch.error;
-        return finalize(result, t0);
-    }
-    if (!searchReq || !searchReq.url) {
-        sSearch.status = 'fail';
-        sSearch.error = 'getSearchRequest 未返回有效请求';
-        collect(engine);
-        result.error = sSearch.error;
-        return finalize(result, t0);
+
+    if (testCase && testCase.skipSearch) {
+        sSearch.status = 'skip';
+        sSearch.detail = '按测试数据跳过搜索';
+    } else {
+        let searchReq = null;
+        try {
+            searchReq = engine.call('getSearchRequest', kw, 1);
+        } catch (e) {
+            sSearch.status = 'fail';
+            sSearch.error = 'getSearchRequest 异常: ' + e.message;
+        }
+        if (sSearch.status !== 'fail' && (!searchReq || !searchReq.url)) {
+            sSearch.status = 'fail';
+            sSearch.error = 'getSearchRequest 未返回有效请求';
+        }
+        if (sSearch.status !== 'fail') {
+            const searchResp = hostFetch(searchReq, safeHeader(engine), timeoutMs);
+            sSearch.ms = Date.now() - tStep;
+            sSearch.http = searchResp.status;
+            if (searchResp.error) {
+                sSearch.status = 'fail';
+                sSearch.error = '请求失败: ' + searchResp.error;
+            } else if (!(searchResp.status >= 200 && searchResp.status < 300)) {
+                sSearch.status = 'fail';
+                sSearch.error = 'HTTP ' + searchResp.status;
+            } else {
+                try {
+                    items = engine.call('parseSearch', searchResp.body, 1);
+                } catch (e) {
+                    sSearch.status = 'fail';
+                    sSearch.error = 'parseSearch 异常: ' + e.message;
+                }
+                if (sSearch.status !== 'fail') {
+                    if (!Array.isArray(items)) {
+                        sSearch.status = 'fail';
+                        sSearch.error = 'parseSearch 返回非数组';
+                    } else if (items.length === 0) {
+                        sSearch.status = 'warn';
+                        sSearch.error = '搜索「' + kw + '」无结果（接口可达，可能关键词不匹配）';
+                    } else {
+                        sSearch.status = 'ok';
+                        sSearch.detail = '命中 ' + items.length + ' 条，首条「' + (items[0].title || items[0].cid) + '」';
+                    }
+                }
+            }
+        }
     }
 
-    const searchResp = hostFetch(searchReq, safeHeader(engine), timeoutMs);
-    sSearch.ms = Date.now() - tStep;
-    sSearch.http = searchResp.status;
-    if (searchResp.error) {
-        sSearch.status = 'fail';
-        sSearch.error = '请求失败: ' + searchResp.error;
-        collect(engine);
-        result.error = sSearch.error;
-        return finalize(result, t0);
-    }
-    if (!(searchResp.status >= 200 && searchResp.status < 300)) {
-        sSearch.status = 'fail';
-        sSearch.error = 'HTTP ' + searchResp.status;
-        collect(engine);
-        result.error = sSearch.error;
-        return finalize(result, t0);
+    /* 搜索未通过时：配置了自定义 cid 则降级为告警继续，否则终止 */
+    if (sSearch.status !== 'ok' && sSearch.status !== 'skip') {
+        if (testCase && testCase.cid) {
+            if (sSearch.status === 'fail') {
+                sSearch.status = 'warn';
+                sSearch.error = '搜索未通过（' + sSearch.error + '），使用自定义 cid 继续';
+            } else {
+                sSearch.error = '搜索「' + kw + '」无结果（使用自定义 cid 继续）';
+            }
+        } else {
+            const why = sSearch.status === 'warn' ? '搜索无结果，未继续测试' : '搜索未通过，未继续测试';
+            skipSteps(result, ['info', 'chapter', 'images'], why);
+            collect(engine);
+            result.error = sSearch.error;
+            return finalize(result, t0);
+        }
     }
 
-    let items;
-    try {
-        items = engine.call('parseSearch', searchResp.body, 1);
-    } catch (e) {
-        sSearch.status = 'fail';
-        sSearch.error = 'parseSearch 异常: ' + e.message;
+    const cid = testCase && testCase.cid
+        ? String(testCase.cid)
+        : (items && items.length > 0 ? String(items[0].cid) : null);
+    if (!cid) {
+        const why = '缺少可用 cid（搜索未产出结果且未配置自定义 cid）';
+        if (sSearch.status === 'skip') {
+            sSearch.status = 'fail';
+            sSearch.error = '测试数据要求跳过搜索，但未配置 cid';
+        }
+        sInfo.status = 'fail';
+        sInfo.error = why;
+        skipSteps(result, ['chapter', 'images'], why);
         collect(engine);
-        result.error = sSearch.error;
+        result.error = why;
         return finalize(result, t0);
     }
-    if (!Array.isArray(items)) {
-        sSearch.status = 'fail';
-        sSearch.error = 'parseSearch 返回非数组';
-        collect(engine);
-        result.error = sSearch.error;
-        return finalize(result, t0);
-    }
-    if (items.length === 0) {
-        sSearch.status = 'warn';
-        sSearch.error = '搜索「' + keyword + '」无结果（接口可达，可能关键词不匹配）';
-        skipSteps(result, ['info', 'chapter', 'images'], '搜索无结果，未继续测试');
-        collect(engine);
-        result.error = sSearch.error;
-        return finalize(result, t0);
-    }
-    sSearch.status = 'ok';
-    sSearch.detail = '命中 ' + items.length + ' 条，首条「' + (items[0].title || items[0].cid) + '」';
-    collect(engine);
-
-    const cid = String(items[0].cid);
 
     /* ---------- 详情 + 章节（同一引擎，对齐详情会话） ---------- */
     let infoEngine;
@@ -351,20 +396,30 @@ export function testSource({ root, sdk, entry, keyword, timeoutMs }) {
             if (Array.isArray(chapters) && chapters.length > 0) {
                 sChapter.status = 'ok';
                 sChapter.detail = chapters.length + ' 话';
+            } else if (testCase && testCase.chapterPath) {
+                sChapter.status = 'warn';
+                sChapter.error = '未解析到章节列表（将使用自定义章节 path 测图片）';
             } else {
                 sChapter.status = 'fail';
                 sChapter.error = '未解析到章节列表';
             }
         } catch (e) {
             sChapter.ms = Date.now() - tStep;
-            sChapter.status = 'fail';
-            sChapter.error = e.message;
+            if (testCase && testCase.chapterPath) {
+                sChapter.status = 'warn';
+                sChapter.error = e.message + '（将使用自定义章节 path 测图片）';
+            } else {
+                sChapter.status = 'fail';
+                sChapter.error = e.message;
+            }
         }
     }
     collect(infoEngine);
 
     /* ---------- 图片 ---------- */
-    const chapterPath = chapters && chapters.length > 0 ? chapters[0].path : null;
+    const chapterPath = testCase && testCase.chapterPath
+        ? String(testCase.chapterPath)
+        : (chapters && chapters.length > 0 ? String(chapters[0].path) : null);
     if (!chapterPath) {
         sImages.status = 'skip';
         sImages.detail = '无可用章节';

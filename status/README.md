@@ -63,17 +63,55 @@ node test_sources.mjs --json
 
 ### 选项
 
-| 选项                | 说明                                             |
-| ------------------- | ------------------------------------------------ |
-| `--only <list>`     | 只测指定源：type 或文件名，逗号分隔              |
-| `--exclude <list>`  | 排除指定源（格式同上）                           |
-| `--keyword <kw>`    | 搜索测试关键词（默认「漫画」）                   |
-| `--concurrency <n>` | 并发测试的源数量（默认 4）                       |
-| `--timeout <ms>`    | 单个 HTTP 请求超时（默认 30000）                 |
-| `--out <file>`      | 状态 JSON 输出路径（默认 `../docs/status.json`） |
-| `--no-write`        | 只测试不写入文件（本地试跑）                     |
-| `--json`            | 打印完整 JSON 到 stdout（不写文件）              |
-| `--verbose`         | 打印每个源的步骤明细与日志                       |
+| 选项                | 说明                                                             |
+| ------------------- | ---------------------------------------------------------------- |
+| `--only <list>`     | 只测指定源：type 或文件名，逗号分隔                              |
+| `--exclude <list>`  | 排除指定源（格式同上）                                           |
+| `--keyword <kw>`    | 搜索测试关键词（默认「漫画」，可被测试数据覆盖）                 |
+| `--data <file>`     | 自定义测试数据文件（默认 `status/test_data.json`，不存在则忽略） |
+| `--no-data`         | 禁用自定义测试数据（全部走默认流程）                             |
+| `--concurrency <n>` | 并发测试的源数量（默认 4）                                       |
+| `--timeout <ms>`    | 单个 HTTP 请求超时（默认 30000）                                 |
+| `--out <file>`      | 状态 JSON 输出路径（默认 `../docs/status.json`）                 |
+| `--no-write`        | 只测试不写入文件（本地试跑）                                     |
+| `--json`            | 打印完整 JSON 到 stdout（不写文件）                              |
+| `--verbose`         | 打印每个源的步骤明细与日志                                       |
+
+### 自定义测试数据
+
+默认流程对每个源使用统一的搜索关键词并取首条结果进入详情/章节/图片。
+某些源搜索不稳定、或首条结果不是典型条目时，可以给单个源配置固定测试数据：
+
+```bash
+cp test_data.example.json test_data.json   # 按需修改（也可用 --data 指定其他文件）
+```
+
+`test_data.json` 结构：
+
+```json
+{
+  "defaults": { "keyword": "漫画" },
+  "sources": {
+    "0": { "keyword": "海贼王" },
+    "12": { "cid": "594697", "chapterPath": "46350", "note": "固定测试样章" },
+    "49": { "skipSearch": true, "cid": "106327" }
+  }
+}
+```
+
+| 字段          | 说明                                                                    |
+| ------------- | ----------------------------------------------------------------------- |
+| `keyword`     | 该源专用搜索关键词（覆盖全局关键词）                                    |
+| `cid`         | 固定详情 cid：详情/章节/图片都使用它；搜索未通过时自动降级为告警继续    |
+| `chapterPath` | 固定章节 path：图片阶段直接使用；章节解析失败时降级为告警（不再判失败） |
+| `skipSearch`  | 跳过搜索步骤（需同时提供 `cid`）                                        |
+| `note`        | 备注，展示在状态页上                                                    |
+
+- `sources` 的键为源的 `type`（见 `index.json`）；只配置其中一部分字段即可，
+  **未配置的源完全按默认流程测试**；
+- 读取顺序：`--data <file>` → 默认 `status/test_data.json`（不存在则忽略）→ 内置默认值；
+- 配置了自定义数据的源在状态页上会标记「自定义测试数据」，展开可查看具体参数；
+- 提交 `test_data.json` 到仓库后，GitHub Actions 的定时测试也会使用它。
 
 ### 输出
 
@@ -95,6 +133,7 @@ node test_sources.mjs --json
   "schemaVersion": 1,
   "generatedAt": "2026-09-11T12:00:00.000Z",
   "keyword": "漫画",
+  "dataFile": null,
   "runner": "local",
   "node": "v20.11.0",
   "durationMs": 96400,
@@ -103,6 +142,7 @@ node test_sources.mjs --json
     {
       "type": 101, "title": "包子漫画", "version": "1.0.1", "url": "sources/baozi.js",
       "status": "ok", "error": null, "durationMs": 8300,
+      "case": null,
       "steps": [
         { "name": "search", "status": "ok", "ms": 1200, "http": 200, "detail": "命中 20 条…", "error": null }
       ],

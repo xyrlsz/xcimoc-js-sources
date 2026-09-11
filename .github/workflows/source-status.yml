@@ -39,10 +39,10 @@ jobs:
         timeout-minutes: 30
         steps:
             - name: 检出仓库（main）
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: 安装 Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version: 20
 

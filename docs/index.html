@@ -454,6 +454,16 @@
             margin-top: 6px;
         }
 
+        .tag {
+            display: inline-block;
+            margin-top: 3px;
+            font-size: 11px;
+            color: var(--warn);
+            background: var(--warn-bg);
+            border-radius: 999px;
+            padding: 1px 7px;
+        }
+
         .empty {
             padding: 40px 16px;
             text-align: center;
@@ -540,12 +550,14 @@
 
         <footer>
             <div>测试方式：模拟 App 的真实调用链 — <b>搜索 → 详情 → 章节 → 图片</b>，每步执行「构建请求 → 发起 HTTP → 解析 HTML」并校验返回结构；数据由
-                <code>status/test_sources.mjs</code> 生成。</div>
-            <div>说明：状态为「跳过」的源需要 WebView 渲染（Cloudflare 等），自动化环境无法验证；「部分可用」通常表示搜索关键词无结果或个别步骤需渲染。结果受服务器网络环境与反爬策略影响，仅供参考。
+                <code>status/test_sources.mjs</code> 生成。
             </div>
-            <div>仓库：<a id="repo-link"
-                    href="https://github.com/xyrlsz/xcimoc-js-sources">github.com/xyrlsz/xcimoc-js-sources</a></div>
-        </footer>
+            <div>说明：状态为「跳过」的源需要 WebView 渲染（Cloudflare 等），自动化环境无法验证；「部分可用」通常表示搜索关键词无结果或个别步骤需渲染。部分源可在
+                status/test_data.json 中配置固定测试数据（页面标记为「自定义测试数据」）。结果受服务器网络环境与反爬策略影响，仅供参考。</div>
+    </div>
+    <div>仓库：<a id="repo-link" href="https://github.com/xyrlsz/xcimoc-js-sources">github.com/xyrlsz/xcimoc-js-sources</a>
+    </div>
+    </footer>
     </div>
 
     <script>
@@ -682,6 +694,9 @@
                 var tdName = el('td');
                 tdName.appendChild(el('div', 'name', r.title || ('type ' + r.type)));
                 tdName.appendChild(el('div', 'file', r.url || ''));
+                if (r.case) {
+                    tdName.appendChild(el('span', 'tag', '自定义测试数据'));
+                }
                 tr.appendChild(tdName);
 
                 tr.appendChild(el('td', 'num', String(r.type)));
@@ -750,6 +765,17 @@
                         logBox.appendChild(el('div', 'lg', l));
                     });
                     grid.appendChild(logBox);
+                }
+
+                if (r.case) {
+                    var c = r.case;
+                    var caseParts = [];
+                    if (c.keyword) caseParts.push('关键词「' + c.keyword + '」');
+                    if (c.cid) caseParts.push('cid=' + c.cid);
+                    if (c.chapterPath) caseParts.push('章节 path=' + c.chapterPath);
+                    if (c.skipSearch) caseParts.push('跳过搜索');
+                    if (c.note) caseParts.push(c.note);
+                    grid.appendChild(el('div', 'dhint', '测试数据：' + caseParts.join(' · ')));
                 }
 
                 var hint = el('div', 'dhint');

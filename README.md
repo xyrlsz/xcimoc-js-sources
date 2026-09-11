@@ -57,19 +57,8 @@ xcimoc-js-sources/
 node scripts/validate.mjs   # 校验 index.json 与所有脚本的 SOURCE 元数据/必需函数
 ```
 
-## 源可用性测试与状态页
+## 源可用性状态页
 
-`status/` 提供可用性测试程序：按 App 的真实调用链（搜索 → 详情 → 章节 → 图片）
-联网测试每个源；GitHub Actions 每天定时运行测试，并把状态页发布到独立的
-**`gh-pages` 分支**（main 分支不会产生自动提交），页面模板为 `docs/index.html`。
+(仅供参考)
 
-```bash
-cd status
-npm install
-node test_sources.mjs                    # 测试全部源 → 本地生成 ../docs/status.json
-node test_sources.mjs --only baozi --verbose   # 测试单个源并查看明细
-```
-
-- 状态：`ok` 可用 / `warn` 部分可用 / `fail` 失败 / `skip` 需 WebView 渲染无法验证
-- 状态页部署：Actions 手动触发一次 → Settings → Pages 选择 `gh-pages` 分支 `/`
-  （详细步骤与选项说明见 `status/README.md`）
+https://xyrlsz.github.io/xcimoc-js-sources/
