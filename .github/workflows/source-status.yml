@@ -44,7 +44,8 @@ jobs:
             - name: 安装 Node.js
               uses: actions/setup-node@v7
               with:
-                  node-version: 20
+                  # Node 20 已于 2026-04 EOL，使用当前 LTS（与本地开发环境一致）
+                  node-version: 24
 
             - name: 安装依赖
               working-directory: status
