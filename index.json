@@ -182,6 +182,13 @@
       "version": "1.0.0",
       "url": "sources/manhuaren.js",
       "baseUrl": "https://www.manhuaren.com"
+    },
+    {
+      "type": 110,
+      "title": "vomic漫",
+      "version": "1.0.0",
+      "url": "sources/vomicmh.js",
+      "baseUrl": "https://www.vomicmh.com"
     }
   ]
 }
