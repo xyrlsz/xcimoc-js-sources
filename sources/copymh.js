@@ -1,5 +1,3 @@
-// 拷贝漫画 (CopyMH) — 由 Java 源 port（CopyMHBase + CopyMH）
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
 // 站点经常更换域名/接口：默认值 + 从设置读取（可持久化，换域名时用「重新探测接口」更新）
 const DEFAULT_WEBSITE = 'https://www.copy4000.com';
 const DEFAULT_SEARCH_API = '/api/kb/web/searchci/comics';
@@ -36,7 +34,6 @@ function probeSearchApi() {
     return { success: false, message: '未探测到可用接口（' + CANDIDATE_DOMAINS.length + ' 个域名均失败）' };
 }
 
-// 工具函数（模块级，不暴露为源接口）
 function isFinishText(text) {
     return text !== null && (text.indexOf('完结') >= 0 || text.indexOf('Completed') >= 0 || text.indexOf('完結') >= 0);
 }

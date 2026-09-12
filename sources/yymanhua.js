@@ -1,9 +1,5 @@
-// YY漫画 (YYManHua) — 由 Java 源 port
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-
 const baseUrl = 'https://www.yymanhua.com';
 
-// 工具函数（模块级，不暴露为源接口）
 function isFinishText(text) {
     return text !== null && (text.indexOf('完结') >= 0 || text.indexOf('Completed') >= 0 || text.indexOf('完結') >= 0);
 }

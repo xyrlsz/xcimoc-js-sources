@@ -1,5 +1,3 @@
-// 热辣漫画 (HotManga) — 由 Java 源 port
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
 const website = 'https://www.manga2026.com';
 const api = 'https://api.2024manga.com';
 // 图片画质（默认 1500）：在 parseImages 中按 getSetting('img_quality') 替换宽度

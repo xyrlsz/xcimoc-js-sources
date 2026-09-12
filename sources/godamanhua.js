@@ -1,6 +1,3 @@
-// G社漫畫 (GoDaManHua) — 由 Java 源 port（_mid 跨调用状态 + 章节页 WebView 解析图片）
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-
 const baseUrl = 'https://m.g-mh.org';
 const apiBaseUrl = 'https://v2.apikk.top';
 

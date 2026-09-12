@@ -175,6 +175,13 @@
       "version": "1.0.0",
       "url": "sources/guazimanhua.js",
       "baseUrl": "https://www.guazimanhua.com"
+    },
+    {
+      "type": 121,
+      "title": "漫画人",
+      "version": "1.0.0",
+      "url": "sources/manhuaren.js",
+      "baseUrl": "https://www.manhuaren.com"
     }
   ]
 }

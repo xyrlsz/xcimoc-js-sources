@@ -1,8 +1,6 @@
-// 包子漫画 (Baozi) — 由 Java 源 port
 const baseUrl = 'https://www.baozimh.com';
 // 图片画质（默认 w640）：在 parseImages 中按 getSetting('img_quality') 决定是否加 /w640 后缀
 
-// 工具函数（模块级，不暴露为源接口）
 function isFinishText(text) {
     return text !== null && (text.indexOf('完结') >= 0 || text.indexOf('Completed') >= 0 || text.indexOf('完結') >= 0);
 }

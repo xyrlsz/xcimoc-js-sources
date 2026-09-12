@@ -1,5 +1,3 @@
-// 读漫屋 (DuManWu) — 由 Java 源 port
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
 const baseUrl = 'http://dumanwu1.com';
 
 var SOURCE = installSource(new (class extends MangaSource {

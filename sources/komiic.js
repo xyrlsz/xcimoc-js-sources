@@ -1,8 +1,3 @@
-// komiic — 由 Java 源 port（GraphQL API）
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-// 说明：原 Java 支持 komiic.com / komiic.cc 双线路自动探测与登录 cookie；
-// JS 版无本地持久化，固定使用 komiic.com，cookie 为空（未登录内容可能受限）。
-
 // 线路可从设置切换（komiic.com / komiic.cc）；网络不通时登录/查询会自动回退另一线路
 var KOMIIC_LINES = ['https://komiic.com', 'https://komiic.cc'];
 var baseUrl = (getSetting('line') === 'komiic.cc') ? KOMIIC_LINES[1] : KOMIIC_LINES[0];
@@ -18,7 +13,6 @@ const Q_CHAPTERS = 'query chapterByComicId($comicId: ID!) {\n  chaptersByComicId
 
 const Q_IMAGES = 'query imagesByChapterId($chapterId: ID!) {\n  imagesByChapterId(chapterId: $chapterId) {\n    id kid height width __typename\n  }\n}';
 
-// 工具函数（模块级，不暴露为源接口）
 // 宿主 buildRequest 用 optString 读 body，因此必须返回 JSON 字符串；
 // 各 GraphQL 请求需显式 contentType='application/json'。
 function jsonBody(operationName, variables, query) {

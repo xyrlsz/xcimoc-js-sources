@@ -1,12 +1,8 @@
-// 优酷漫画 (YKMH) — 由 Java 源 port（全站 Cloudflare，需 WebView 渲染）
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-
 const mHost = 'https://m.ykmh.net/';
 const UA = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
 // 对齐 Java 源 YKMH.imgBaseUrl：图片相对路径拼接的固定兜底域名
 const imgBaseUrl = 'https://fm.haotuyk.top';
 
-// 工具函数（模块级，不暴露为源接口）
 function extractDomainFromPageImage(html) {
     var m = /var pageImage\s*=\s*"([^"]+)"/.exec(html);
     if (m) {

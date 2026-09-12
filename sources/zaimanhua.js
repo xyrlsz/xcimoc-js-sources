@@ -1,8 +1,3 @@
-// 再漫画 (ZaiManhua) — 由 Java 源 port
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-// 说明：原 Java 需要登录 token（SharedPreferences）；JS 版无登录入口，
-// authorization 使用空 Bearer，未登录可能无法阅读部分漫画。
-
 const apiBaseUrl = 'https://v4api.zaimanhua.com';
 const pcBaseUrl = 'https://manhua.zaimanhua.com';
 
@@ -21,7 +16,6 @@ function authHeaders() {
     return h;
 }
 
-// 工具函数（模块级，不暴露为源接口）
 function isFinishText(text) {
     return text !== null && (text.indexOf('完结') >= 0 || text.indexOf('Completed') >= 0 || text.indexOf('完結') >= 0);
 }

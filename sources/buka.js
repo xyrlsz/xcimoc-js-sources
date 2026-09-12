@@ -1,4 +1,3 @@
-// 布卡漫画 (BuKa) — 由 Java 源 port
 const UA = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36';
 
 var SOURCE = installSource(new (class extends MangaSource {

@@ -1,6 +1,3 @@
-// 漫画台 (Manhuatai) — 由 Java 源 port
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-
 var SOURCE = installSource(new (class extends MangaSource {
     constructor() {
         super({

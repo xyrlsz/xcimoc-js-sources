@@ -1,10 +1,6 @@
-// 漫画鱼 (Manhuayu) — 由 Java 源 port（AES-CBC 解密，IV 为密文前 16 字节）
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-
 const baseUrl = 'https://www.manhuayu88.com';
 const AES_KEY = '5V&RoR%Jf@pJPydF';
 
-// 工具函数（模块级，不暴露为源接口）
 function extractParams(html) {
     var m = /params\s*=\s*'([^'\\]*(?:\\.[^'\\]*)*)'/.exec(html);
     return m ? m[1] : null;

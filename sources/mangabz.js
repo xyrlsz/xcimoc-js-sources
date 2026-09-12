@@ -1,7 +1,3 @@
-// MangaBZ — 由 Java 源 port
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-
-// 工具函数（模块级，不暴露为源接口）
 function getValFromRegex(html, keyword, searchfor) {
     var m = new RegExp('var\\s+' + keyword + '\\s*=\\s*' + searchfor + '\\s*;').exec(html);
     return m ? m[1] : null;

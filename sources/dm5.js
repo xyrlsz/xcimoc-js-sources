@@ -1,7 +1,3 @@
-// 动漫屋 (DM5) — 由 Java 源 port
-// 继承 MangaSource 基类（声明全部接口 + 默认空实现），仅覆写本源用到的接口。
-
-// 工具函数（模块级，不暴露为源接口）
 function normalizeUpdate(update) {
     if (!update) return null;
     var d = new Date();
@@ -257,7 +253,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 })());
 
-// 工具函数（模块级，不暴露为源接口）：为特定 URL 构造请求头
+// 为特定 URL 构造请求头
 function getHeaderForUrl(url) {
     var cid = match('cid=(\\d+)', url, 1);
     return { Referer: 'https://m.dm5.com/m' + (cid ? cid : '') };

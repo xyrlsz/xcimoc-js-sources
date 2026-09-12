@@ -1,6 +1,4 @@
-// 包子漫画 (Baozi) — 由 Java 源 port
 const baseUrl = 'https://www.guazimanhua.com';
-
 
 function isFinishText(text) {
     return text !== null && (text.indexOf('完结') >= 0 || text.indexOf('Completed') >= 0 || text.indexOf('完結') >= 0);
