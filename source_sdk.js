@@ -909,6 +909,10 @@ MangaSource.prototype.getSettings = function () { return []; };
 MangaSource.prototype.onSettingsAction = function (key) { return null; };
 /* 注册链接（可选）：返回注册页 URL 字符串，供登录对话框「注册」按钮打开；不返回（null）则不显示注册按钮 */
 MangaSource.prototype.getRegisterUrl = function () { return null; };
+/* 生命周期钩子（可选）：源脚本加载后做一次初始化（如拷贝漫画探测域名/分类）。
+ * 由 JsMangaParser.initInBackground() 在后台线程调度，不能在主线程执行 fetch。
+ * 默认空实现；源按需覆写。 */
+MangaSource.prototype.init = function () { return null; };
 
 /* 所有可被宿主调用的方法名（也是源脚本需遵守的接口契约） */
 var __SOURCE_METHODS = [
@@ -921,7 +925,8 @@ var __SOURCE_METHODS = [
     'getCheckRequest', 'parseCheck',
     'getCategories', 'getCategoryRequest', 'parseCategory',
     'login', 'getLoginState', 'logout', 'getSettings', 'onSettingsAction',
-    'getRegisterUrl'
+    'getRegisterUrl',
+    'init'
 ];
 
 /* ================= 返回结构 Schema 校验 =================
@@ -1179,6 +1184,79 @@ function installSource(src) {
     }
     globalThis.SOURCE = src;
     return src;
+}
+
+/* ================= 单引号 JSON → 标准双引号 JSON =================
+ * 拷贝漫画等站在 HTML 属性里用 &#x27;/&#39; 或字面单引号包裹 JSON 字符串
+ * （属性本身用双引号包裹，内层不能再直接用双引号）。
+ *
+ * 简单的 .replace(/'/g, '"') 会破坏值内部含撇号的情况（如漫画名 "It's great"
+ * 被替换成 "It"s great"，JSON 提前终止，报 "Expected ',' or '}'" 错）。
+ *
+ * 本函数用状态机精确识别字符串边界：
+ *   - 在双引号字符串内：保留单引号原样（撇号是正常字符）
+ *   - 在单引号字符串外（结构位置）：单引号作为字符串定界符，转换为双引号
+ *   - 单引号字符串内未转义的 "：转义为 \" 避免破坏输出
+ *   - 转义序列（\\, \', \"）按源语法处理，输出按目标双引号语法重新转义
+ *
+ * 非字符串区域（数字、true/false/null、结构字符 [] {} , :）原样通过。
+ */
+function fixJsonQuotes(str) {
+    if (str == null) return str;
+    var out = '';
+    var inDq = false;  /* 是否在双引号字符串内 */
+    var inSq = false;  /* 是否在单引号字符串内 */
+    for (var i = 0; i < str.length; i++) {
+        var c = str[i];
+        if (inDq) {
+            if (c === '\\' && i + 1 < str.length) {
+                /* 转义序列原样保留（JSON 合法转义） */
+                out += c + str[i + 1];
+                i++;
+            } else if (c === '"') {
+                inDq = false;
+                out += c;
+            } else {
+                out += c;
+            }
+        } else if (inSq) {
+            if (c === '\\' && i + 1 < str.length) {
+                var next = str[i + 1];
+                if (next === "'") {
+                    /* \' 在单引号串里是转义单引号；双引号串里 ' 无需转义 */
+                    out += "'";
+                } else if (next === '"') {
+                    /* \" 在单引号串里是字面双引号；双引号串里需转义 */
+                    out += '\\"';
+                } else if (next === '\\') {
+                    out += '\\\\';
+                } else {
+                    out += '\\' + next;
+                }
+                i++;
+            } else if (c === "'") {
+                /* 单引号串结束 → 输出双引号 */
+                inSq = false;
+                out += '"';
+            } else if (c === '"') {
+                /* 单引号串内未转义的 " → 转义后输出 */
+                out += '\\"';
+            } else {
+                out += c;
+            }
+        } else {
+            if (c === '"') {
+                inDq = true;
+                out += c;
+            } else if (c === "'") {
+                inSq = true;
+                out += '"';
+            } else {
+                out += c;
+            }
+        }
+    }
+    return out;
 }
 
 

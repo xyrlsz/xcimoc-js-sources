@@ -39,14 +39,14 @@
     {
       "type": 26,
       "title": "拷贝漫画",
-      "version": "1.0.5",
+      "version": "1.0.9",
       "url": "sources/copymh.js",
       "baseUrl": "https://www.copy4000.com"
     },
     {
       "type": 27,
       "title": "拷贝漫画Web",
-      "version": "1.0.3",
+      "version": "1.0.9",
       "url": "sources/copymhweb.js",
       "baseUrl": "https://www.copy4000.com"
     },
