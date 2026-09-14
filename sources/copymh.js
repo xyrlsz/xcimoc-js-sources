@@ -161,44 +161,32 @@ function probeSearchApi() {
 }
 
 // 分类 API 端点（相对路径，拼接在 api.xxx 域名下）
-const CATEGORIES_API = '/api/v3/h5/filter/comic/tags?type=1';
+const CATEGORIES_API = '/api/v3/theme/comic/count?free_type=1&limit=500&offset=0&_update=true';
 
 // 从分类 API 的 JSON 响应解析分类选项
-// theme → subject（path_word 与 /comics?theme= 一致，可直接用）
-// ordering → order（path_word 与 /comics?ordering= 一致，生成正序+倒序）
-// top → 地区(japan/korea/west)+状态(finish)，但 path_word 与 /comics 的 region=/status= 数值不一致，
-//        且 API 不返回 連載中/短篇，故 area/progress 保持默认值（稳定不变）
+// results.list → subject（path_word 与 /comics?theme= 一致，可直接用）
+// 该接口只返回主题分类，area/progress/order 保持默认值（这些数值稳定不变）
 function parseCategoriesFromApi(jsonStr) {
     var data = JSON.parse(jsonStr);
     if (!data || data.code !== 200 || !data.results) return null;
     var r = data.results;
     var result = { subject: [], area: [], progress: [], order: [] };
 
-    // theme → subject
+    // results.list → subject
     result.subject.push({ title: '全部', value: '' });
-    if (r.theme) {
-        for (var i = 0; i < r.theme.length; i++) {
-            if (r.theme[i].path_word) {
-                result.subject.push({ title: r.theme[i].name, value: r.theme[i].path_word });
+    var list = r.list || r.theme;
+    if (list) {
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].path_word) {
+                result.subject.push({ title: list[i].name, value: list[i].path_word });
             }
         }
     }
 
-    // area / progress：API 的 top 值(japan/korea/west/finish)与 /comics 的 region=/status= 不匹配，
-    // 保持默认值（这些数值 0/1/2 稳定不变）
+    // area / progress / order：API 不返回这些分组，保持默认值（数值稳定不变）
     result.area = DEFAULT_CATEGORIES.area;
     result.progress = DEFAULT_CATEGORIES.progress;
-
-    // ordering → order（生成正序 + 倒序）
-    if (r.ordering) {
-        for (var j = 0; j < r.ordering.length; j++) {
-            var pw = r.ordering[j].path_word;
-            var nm = r.ordering[j].name;
-            if (!pw) continue;
-            result.order.push({ title: nm + '（倒序）', value: '-' + pw });
-            result.order.push({ title: nm, value: pw });
-        }
-    }
+    result.order = DEFAULT_CATEGORIES.order;
 
     return result;
 }
