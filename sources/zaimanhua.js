@@ -203,6 +203,27 @@ var SOURCE = installSource(new (class extends MangaSource {
         ];
     }
 
+    auto_sign() {
+        var autoSign = getSetting('auto_sign', 'false');
+        var enabled = (autoSign === true || autoSign === 'true' || autoSign === 1 || autoSign === '1');
+        log('[auto_sign] auto_sign=' + String(autoSign) + ' enabled=' + enabled);
+        if (!enabled) return { success: false, message: '未开启自动签到' };
+
+        var token = loginToken();
+        if (!token) {
+            log('[auto_sign] enabled but no login token, skip');
+            return { success: false, message: '未登录' };
+        }
+
+        var result = this.onSettingsAction('sign_in');
+        log('[auto_sign] result=' + (result ? JSON.stringify(result) : 'null'));
+        return result || { success: false, message: '签到失败' };
+    }
+
+    initWhenAppStart() {
+        this.auto_sign();
+    }
+
     onSettingsAction(key) {
         if (key === 'sign_in') {
             var token = loginToken();
