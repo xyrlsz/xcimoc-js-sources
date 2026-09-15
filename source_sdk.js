@@ -910,12 +910,12 @@ MangaSource.prototype.onSettingsAction = function (key) { return null; };
 /* 注册链接（可选）：返回注册页 URL 字符串，供登录对话框「注册」按钮打开；不返回（null）则不显示注册按钮 */
 MangaSource.prototype.getRegisterUrl = function () { return null; };
 /* 生命周期钩子（可选）：
- *  - init()：每次新建 parser / 重建源时执行，适合需要重跑的探测；
- *  - initWhenAppStart()：app 启动时执行一次，适合只需在打开 app 时跑一次的初始化；
+ *  - init()：app 启动时只执行一次，适合首次探测/初始化；
+ *  - initWhenParserCreate()：每次创建 parser 时执行，适合每次构建源都要重跑的探测；
  * 由 JsMangaParser.initInBackground() 在后台线程调度，不能在主线程执行 fetch。
  * 默认空实现；源按需覆写。 */
 MangaSource.prototype.init = function () { return null; };
-MangaSource.prototype.initWhenAppStart = function () { return null; };
+MangaSource.prototype.initWhenParserCreate = function () { return null; };
 
 /* 所有可被宿主调用的方法名（也是源脚本需遵守的接口契约） */
 var __SOURCE_METHODS = [
@@ -929,7 +929,7 @@ var __SOURCE_METHODS = [
     'getCategories', 'getCategoryRequest', 'parseCategory',
     'login', 'getLoginState', 'logout', 'getSettings', 'onSettingsAction',
     'getRegisterUrl',
-    'init', 'initWhenAppStart'
+    'init', 'initWhenParserCreate'
 ];
 
 /* ================= 返回结构 Schema 校验 =================

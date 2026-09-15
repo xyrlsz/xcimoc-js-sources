@@ -215,12 +215,19 @@ var SOURCE = installSource(new (class extends MangaSource {
             return { success: false, message: '未登录' };
         }
 
+        var todayKey = 'sign_' + (new Date().getFullYear()) + '-' + (new Date().getMonth() + 1) + '-' + (new Date().getDate());
+        var signed = getState(todayKey);
+        if (signed === '1' || signed === 'true' || signed === true) {
+            log('[auto_sign] already signed today key=' + todayKey);
+            return { success: false, message: '今日已签到' };
+        }
+
         var result = this.onSettingsAction('sign_in');
         log('[auto_sign] result=' + (result ? JSON.stringify(result) : 'null'));
         return result || { success: false, message: '签到失败' };
     }
 
-    initWhenAppStart() {
+    init() {
         this.auto_sign();
     }
 
@@ -249,6 +256,8 @@ var SOURCE = installSource(new (class extends MangaSource {
                         else if (j && j.data && j.data.msg) msg = String(j.data.msg);
                     } catch (e) { /* ignore */ }
                 }
+                var todayKey = 'sign_' + (new Date().getFullYear()) + '-' + (new Date().getMonth() + 1) + '-' + (new Date().getDate());
+                setState(todayKey, '1');
                 return { success: true, message: msg };
             }
             return { success: false, message: res && res.status ? ('签到失败(' + res.status + ')') : '网络错误' };
