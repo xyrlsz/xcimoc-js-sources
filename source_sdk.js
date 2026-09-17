@@ -40,6 +40,11 @@ function showToast(msg) {
     _call('toast', { data: msg === null || msg === undefined ? '' : String(msg) });
 }
 
+/* 显示一条 Dialog 消息，自动切主线程；无前台 Activity 时忽略。 */
+function showDialogMessage(msg) {
+    _call('dialog', { data: msg === null || msg === undefined ? '' : String(msg) });
+}
+
 /* 发起一次宿主 HTTP 请求（同步阻塞）。返回 {status, headers, setCookie, body}。
  * 主要用于登录等需要发起请求并读取响应头/响应体的场景；常规解析请用 getXxxRequest。
  *
