@@ -103,6 +103,19 @@ function hostFetch(request, header, timeoutMs) {
     }, { timeoutMs });
 }
 
+function checkImageUrl(url, headers, timeoutMs) {
+    const resp = hostFetch({ url, method: 'GET', headers }, null, timeoutMs);
+    if (resp.error) throw new Error('图片请求失败: ' + resp.error);
+    if (!(resp.status >= 200 && resp.status < 300)) throw new Error('图片 HTTP ' + resp.status);
+    if (!resp.body) throw new Error('图片响应为空');
+    const contentType = Object.keys(resp.headers || {}).find((k) => k.toLowerCase() === 'content-type');
+    const mediaType = contentType ? String(resp.headers[contentType]).split(';', 1)[0].trim().toLowerCase() : '';
+    if (mediaType && !mediaType.startsWith('image/')) {
+        throw new Error('图片响应类型异常: ' + mediaType);
+    }
+    return resp;
+}
+
 function finalize(result, t0) {
     result.durationMs = Date.now() - t0;
     const steps = result.steps;
@@ -450,8 +463,17 @@ export function testSource({ root, sdk, entry, keyword, timeoutMs, testCase = nu
                 ? imgs.filter((x) => x && ((Array.isArray(x.urls) && x.urls.length > 0) || x.url)).length
                 : 0;
             if (count > 0) {
+                const imageUrl = imgs.flatMap((x) => {
+                    if (!x) return [];
+                    if (typeof x.url === 'string' && x.url.trim()) return [x.url.trim()];
+                    return Array.isArray(x.urls)
+                        ? x.urls.filter((url) => typeof url === 'string' && url.trim()).map((url) => url.trim())
+                        : [];
+                })[0];
+                if (!imageUrl) throw new Error('未解析到可直接访问的图片 URL');
+                const imageResp = checkImageUrl(imageUrl, pickHeaders(imgReq, safeHeader(imgEngine)), timeoutMs);
                 sImages.status = 'ok';
-                sImages.detail = count + ' 张图片';
+                sImages.detail = count + ' 张图片，首张资源可访问（HTTP ' + imageResp.status + '）';
                 const lazyCount = imgs.filter((x) => x && x.lazy).length;
                 if (lazyCount > 0) {
                     sImages.detail += '（' + lazyCount + ' 张为懒加载）';
