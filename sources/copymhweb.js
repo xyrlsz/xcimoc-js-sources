@@ -292,7 +292,7 @@ var SOURCE = installSource(new (class extends MangaSource {
                 'www.mangacopy.com', 'www.copy20.com', 'www.2025copy.com',
                 'www.2026copy.com', 'www.copy3000.com'
             ],
-            cidRegex: 'comic/(\\w+)',
+            cidRegex: '(?:h5/details/)?comic/([\\w-]+)',
             webConfig: {
                 info: {
                     useWebParser: true,
