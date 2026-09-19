@@ -290,7 +290,8 @@ var SOURCE = installSource(new (class extends MangaSource {
             baseUrl: 'https://www.copy4000.com',
             hosts: [
                 'www.mangacopy.com', 'www.copy20.com', 'www.2025copy.com',
-                'www.2026copy.com', 'www.copy3000.com'
+                'www.2026copy.com', 'www.copy3000.com', "www.copy4000.com",
+                "www.copy5000.com"
             ],
             cidRegex: '(?:h5/details/)?comic/([\\w-]+)',
             webConfig: {
