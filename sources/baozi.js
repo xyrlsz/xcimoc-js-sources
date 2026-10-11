@@ -1,7 +1,9 @@
 const baseUrlCN = 'https://appcn2.bzmgapp.com/baozimhapp';
 const baseUrlGlobal = 'https://appgb3.bzmgapp.com/baozimhapp';
 
-var baseUrl = baseUrlGlobal;
+function getBaseUrl() {
+    return getSetting('use_global', true) ? baseUrlGlobal : baseUrlCN;
+}
 
 function isFinishText(text) {
     return text !== null && (text.indexOf('完结') >= 0 || text.indexOf('Completed') >= 0 || text.indexOf('完結') >= 0);
@@ -144,10 +146,10 @@ function isValidFilters(f) {
 
 // 拉取 /classify 页面并解析；失败返回 null
 function fetchClassifyFilters() {
-    var res = fetch(baseUrl + '/classify', {
+    var res = fetch(getBaseUrl() + '/classify', {
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36',
-            'Referer': baseUrl + '/'
+            'Referer': getBaseUrl() + '/'
         }
     });
     if (res && res.status === 200 && res.body) {
@@ -206,13 +208,12 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     init() {
-        baseUrl = getSetting('use_global', true) ? baseUrlGlobal : baseUrlCN;
         updateCategories();
     }
 
     getSearchRequest(keyword, page) {
         if (page !== 1) return null;
-        var url = baseUrl + '/search?q=' + keyword;
+        var url = getBaseUrl() + '/search?q=' + keyword;
         return { url: url };
     }
 
@@ -249,7 +250,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getInfoRequest(cid) {
-        return { url: baseUrl + '/comic/' + cid };
+        return { url: getBaseUrl() + '/comic/' + cid };
     }
 
     parseInfo(html, cid) {
@@ -323,9 +324,9 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     getImagesRequest(cid, path) {
         return {
-            url: format('%s/comic/chapter/%s/0_%s.html', baseUrl, cid, path),
+            url: format('%s/comic/chapter/%s/0_%s.html', getBaseUrl(), cid, path),
             headers: {
-                referer: baseUrl + '/',
+                referer: getBaseUrl() + '/',
             }
         };
     }
@@ -351,7 +352,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     getHeader() {
         return {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36',
-            Referer: baseUrl
+            Referer: getBaseUrl()
         };
     }
 
@@ -380,7 +381,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         var f = loadStoredCategories() || DEFAULT_FILTERS;
         return {
             composite: true,
-            format: baseUrl + '/api/bzmhq/amp_comic_list?type={subject}&region={area}&state={progress}&filter={order}&page={page}&limit=36&language=cn',
+            format: getBaseUrl() + '/api/bzmhq/amp_comic_list?type={subject}&region={area}&state={progress}&filter={order}&page={page}&limit=36&language=cn',
             subject: f.subject,
             area: f.area,
             progress: f.progress,
