@@ -25,7 +25,7 @@
     {
       "type": 52,
       "title": "布卡漫画",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "url": "sources/buka.js",
       "baseUrl": "https://www.bukamh.com"
     },
@@ -74,14 +74,14 @@
     {
       "type": 91,
       "title": "优酷漫画",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "url": "sources/ykmh.js",
       "baseUrl": "https://m.ykmh.net/"
     },
     {
       "type": 101,
       "title": "包子漫画",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "url": "sources/baozi.js",
       "baseUrl": "https://www.baozimh.com"
     },
@@ -95,7 +95,7 @@
     {
       "type": 104,
       "title": "读漫屋",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "url": "sources/dumanwu.js",
       "baseUrl": "http://dumanwu1.com"
     },
@@ -172,7 +172,7 @@
     {
       "type": 120,
       "title": "瓜子漫画",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "url": "sources/guazimanhua.js",
       "baseUrl": "https://www.guazimanhua.com"
     },

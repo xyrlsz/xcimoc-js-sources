@@ -40,7 +40,8 @@ WebView 渲染相关环境变量（可放 `npm start` 前）：
   - 章节：`getInfoRequest` → fetch → `parseInfo` → 优先使用详情中的 `chapters`；否则调用
     `getChapterRequest` → fetch → `parseChapter`。未实现或返回 `null` 时，用详情页 HTML 调用 `parseChapter`
   - 图片：`getImagesRequest` → fetch → `parseImages`
-  - 分类：`getCategories` → `getCategoryRequest` → fetch → `parseCategory`
+  - 分类：`getCategories` → 模板替换 → `getCategoryRequest` → fetch → `parseCategory`；
+    `composite: true` 且未实现 `getCategoryRequest` 时，直接把替换后的 format 当作 URL 请求
   - 登录：`login` → `getLoginState`
   - **直接调用**：任选一个方法 + 传入 JSON 参数数组，单步执行
 - 每个步骤展示：方法名、OK/失败、结果（JSON）、fetch 响应体（可展开）、脚本内 `log()`/`console` 日志、异常堆栈。

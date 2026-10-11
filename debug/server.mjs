@@ -321,6 +321,40 @@ function fetchForStep(cfg, req) {
   return { ...resp, render: false, result: { url: req.url, status: resp.status, body: resp.body, error: resp.error } };
 }
 
+function renderCategoryFormat(categories, format, params, page) {
+  const pageSize = numOrDefault(categories.pageSize, 20);
+  const allValue = categories.allValue;
+  const dimensions = ['subject', 'area', 'reader', 'year', 'progress', 'order'];
+  let rendered = format;
+  for (const dimension of dimensions) {
+    const options = Array.isArray(categories[dimension]) ? categories[dimension] : [];
+    const allOption = options.find((option) =>
+      option && /^(全部|所有|all)$/i.test(String(option.title || '').trim()));
+    let value = params[dimension];
+    if (value === undefined || value === null || value === '') {
+      if (allValue && typeof allValue === 'object' && allValue[dimension] !== undefined) {
+        value = allValue[dimension];
+      } else if (typeof allValue === 'string') {
+        value = allValue;
+      } else {
+        value = allOption ? allOption.value : '';
+      }
+    }
+    rendered = rendered.split('{' + dimension + '}').join(String(value));
+  }
+  const offset = (page - 1) * pageSize;
+  rendered = rendered
+    .split('{page}').join(String(page))
+    .split('{offset}').join(String(offset))
+    .split('{limit}').join(String(pageSize));
+  return rendered;
+}
+
+function numOrDefault(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 /* 执行引导流程（模拟 App 的 getXxxRequest → fetch → parseXxx） */
 function executeFlow(sourceFile, flow, params) {
   const steps = [];
@@ -394,7 +428,24 @@ function executeFlow(sourceFile, flow, params) {
       const cat = P('getCategories', []);
       if (cat.ok && cat.result && cat.result.format) {
         const page = num(params.page, 1);
-        const req = P('getCategoryRequest', [params.format || cat.result.format, page]);
+        const format = cat.result.composite
+          ? renderCategoryFormat(cat.result, params.format || cat.result.format, params, page)
+          : (params.format || cat.result.format);
+        const categoryMethod = runSource(sourceFile, 'getCategoryRequest', [format, page]);
+        const missingCategoryMethod = !categoryMethod.ok
+          && categoryMethod.error === '方法 getCategoryRequest 未实现';
+        const req = cat.result.composite && missingCategoryMethod
+          ? { ok: true, result: { url: format }, meta: cat.meta, logs: [] }
+          : categoryMethod;
+        if (!missingCategoryMethod || !cat.result.composite) {
+          steps.push({ step: 'getCategoryRequest', ...req });
+        } else {
+          steps.push({
+            step: 'getCategoryRequest (format)',
+            ok: true,
+            result: req.result,
+          });
+        }
         if (req.ok && req.result) {
           const resp = fetchForStep(flowWebConfig(req.meta, 'category'), req.result);
           steps.push({ step: resp.render ? 'webview' : 'fetch', ok: true, result: resp.result });
@@ -516,4 +567,4 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   attempt();
 }
 
-export { runSource, executeFlow, doFetch, createServer, INDEX, SDK };
+export { runSource, executeFlow, doFetch, createServer, renderCategoryFormat, INDEX, SDK };

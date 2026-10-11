@@ -460,9 +460,6 @@ var SOURCE = installSource(new (class extends MangaSource {
         return list;
     }
 
-    getCheckRequest(cid) {
-        return this.getInfoRequest(cid);
-    }
 
     getHeader() {
         return { referer: baseUrl + '/', cookie: loginCookie() };

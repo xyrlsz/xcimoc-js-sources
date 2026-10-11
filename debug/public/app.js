@@ -49,6 +49,12 @@ const FLOW_FIELDS = {
   ],
   category: [
     { k: 'format', label: 'format（留空自动用 getCategories）', type: 'text', def: '' },
+    { k: 'subject', label: 'subject 值（留空用“全部”）', type: 'text', def: '' },
+    { k: 'area', label: 'area 值（留空用“全部”）', type: 'text', def: '' },
+    { k: 'reader', label: 'reader 值（留空用“全部”）', type: 'text', def: '' },
+    { k: 'year', label: 'year 值（留空用“全部”）', type: 'text', def: '' },
+    { k: 'progress', label: 'progress 值（留空用“全部”）', type: 'text', def: '' },
+    { k: 'order', label: 'order 值（留空用“全部”）', type: 'text', def: '' },
     { k: 'page', label: '页码', type: 'number', def: 1 },
   ],
   login: [
