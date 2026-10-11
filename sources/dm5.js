@@ -102,11 +102,18 @@ var SOURCE = installSource(new (class extends MangaSource {
         if (intro) {
             intro = intro.replace(/\[\+展开\]/g, '').replace(/\[-折叠\]/g, '');
         }
+        var nodes = body.select('div.banner_detail_form > div.info > p.tip > span.block:nth-child(2) a span');
+        var tags = [];
+        for (var i = 0; i < nodes.length; i++) {
+            var t = (nodes[i].text() || '').trim();
+            if (t) tags.push(t);
+        }
         return {
             title: title.trim(),
             cover: body.src('div.banner_detail_form > div.cover > img'),
             update: normalizeUpdate(body.text('#tempc > div.detail-list-title > span.s > span')),
             author: body.text('div.banner_detail_form > div.info > p.subtitle > a'),
+            tags: tags,
             intro: intro,
             finish: isFinishText(body.text('div.banner_detail_form > div.info > p.tip > span:eq(0)'))
         };

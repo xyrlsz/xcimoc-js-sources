@@ -233,7 +233,7 @@ function sourceType(sourceFile) {
   return e ? e.type : -1;
 }
 
-/* 在全新沙箱中加载 SDK + 源脚本，并调用一个方法（每次调用新建引擎，对齐 App） */
+/* 在全新沙箱中加载 SDK 和源脚本，并调用一个方法（每次调用新建引擎，对齐 App） */
 function runSource(sourceFile, method, args) {
   const file = join(ROOT, sourceFile);
   if (!existsSync(file)) return { ok: false, error: '源文件不存在: ' + sourceFile, logs: [] };
@@ -252,7 +252,8 @@ function runSource(sourceFile, method, args) {
   sandbox.globalThis = sandbox;
   const vctx = vm.createContext(sandbox);
   try {
-    vm.runInContext(SDK + '\n' + script, vctx, { filename: sourceFile });
+    vm.runInContext(SDK, vctx, { filename: join(ROOT, 'source_sdk.js') });
+    vm.runInContext(script, vctx, { filename: file });
   } catch (e) {
     return { ok: false, error: '脚本加载失败: ' + ((e && e.message) || e), logs: ctx.logs };
   }
@@ -485,4 +486,3 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
 }
 
 export { runSource, executeFlow, doFetch, createServer, INDEX, SDK };
-

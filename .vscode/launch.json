@@ -12,7 +12,8 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}\\debug\\server.mjs"
+            "program": "${workspaceFolder}\\debug\\server.mjs",
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

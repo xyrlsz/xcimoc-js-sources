@@ -115,7 +115,7 @@ SDK 的 `installSource()` 会对每个**被覆写的方法**套一层返回结�
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `getSearchRequest` / `getInfoRequest` / `getChapterRequest` / `getImagesRequest` / `getLazyRequest` / `getCheckRequest` / `getCategoryRequest` | 请求对象或 `null`                  | `url` 必填非空字符串；`method`/`body`/`contentType` 转字符串；`headers` 须对象；无效→`null`（宿主回退）                    |
 | `parseSearch` / `parseCategory`                                                                                                                | 数组                               | 每项 `{ cid(必填), title(必填), cover?, update?, author? }`；缺 `cid`/`title` 丢弃该项，其余字段转字符串                   |
-| `parseInfo`                                                                                                                                    | 对象或 `null`                      | `title/cover/author/intro/status/update/tags` 转字符串；`chapters` 须数组，逐项按章节校验                                  |
+| `parseInfo`                                                                                                                                    | 对象或 `null`                      | `title/cover/author/intro/status/update` 转字符串；`tags` 须**字符串数组**（非数组忽略该字段、非字符串项跳过）；`chapters` 须数组，逐项按章节校验        |
 | `parseChapter`                                                                                                                                 | 数组                               | 每项 `{ title(必填), path(必填) }`；缺 `title`/`path` 丢弃该项                                                             |
 | `parseImages`                                                                                                                                  | 数组                               | 每项 `{ urls(必填非空数组), headers? }`；`urls` 逐项转字符串；空/缺 `urls` 丢弃该项                                        |
 | `parseLazy` / `parseCheck` / `getUrl` / `getRegisterUrl`                                                                                       | 字符串或 `null`                    | 非字符串→`null`                                                                                                            |
@@ -129,6 +129,99 @@ SDK 的 `installSource()` 会对每个**被覆写的方法**套一层返回结�
 > 除非目标接口明确要 JSON body 才配 `contentType: 'application/json'`。
 
 校验层不改变正常源的输出；`node scripts/check_schema.mjs` 对校验逻辑做自测。
+
+---
+
+## 标签解析（tags）
+
+详情页头部展示一排可点击的漫画标签（题材），点击后跳转分类页并按该标签检索。要让某个源接入这条链路，**只需在 `parseInfo` 返回对象里加一个 `tags` 字符串数组**，宿主与 SDK 均已支持，无需新增方法、无需改宿主代码。
+
+### 端到端链路（了解即可，便于排查）
+
+1. JS 源 `parseInfo` 返回 `{ …, tags: ['热血', '恋爱'] }`；
+2. SDK 校验器（`__chkInfo`）保证 `tags` 是字符串数组，随详情 JSON 传给宿主；
+3. App 详情页头部把标签渲染为可点击 chip（横向滚动，最多 20 个）；
+4. 点击标签 → 以 `source + tag` 打开分类页；
+5. 分类页在 **`getCategories()` 的 `subject`（主题）维度**中查找与标签同名的选项，命中则自动选中并立即检索；不命中则提示「当前图源不支持该标签分类」且不自动检索。
+
+> 因此标签文案不是任意自由文本：**它必须等于该源 `getCategories()` 里某个 `subject` 项的 `title`**（比较前双方都做简繁转换，简/繁均可，但不能有标点或空格差异）。
+
+### 返回约定
+
+- 类型：`string[]`，每一项是**非空字符串**。
+- 不返回、返回 `null`、空数组 `[]` 都视为「无标签」，详情页不显示标签区，均合法。
+- SDK 校验行为（`source_sdk.js` 的 `__chkInfo`）：
+  - `tags` 不是数组（如逗号拼接的字符串 `'热血,恋爱'`、对象）→ 打 `[schema:parseInfo] tags 应为数组，已忽略` 日志并**删除该字段**；
+  - 数组中的 `null`/非字符串项 → 打日志并跳过该项；
+- 宿主（Java）会再做一次清洗：逐项 `trim()`、丢弃空串与字面量 `"null"`、去重、截断到 20 个。源侧无需自己做这些，但建议返回干净数据。
+- 不要把标签塞进 `chapters` 或自定义其他字段，宿主只认 `tags`。
+
+### 写法一：从 HTML 逐个取标签（DOM 型站点）
+
+用 `select` 选中**所有标签节点**（通常是标签链接/角标），逐个取文本；不要取整个容器的 text（多标签会连成一段）：
+
+```js
+parseInfo(html, cid) {
+    var body = DOM(html);
+
+    // 标签一般是一组 <a> / <span>，按站点真实结构调整选择器；
+    // 优先选带链接的标签节点（站点自身点击标签通常也走列表筛选）
+    var tagNodes = body.select('.comics-detail__tags a');
+    var tags = [];
+    for (var i = 0; i < tagNodes.length; i++) {
+        var t = (tagNodes[i].text() || '').trim();
+        if (t) tags.push(t);
+    }
+
+    return {
+        title: body.text('.comics-detail__title'),
+        cover: body.src('div > amp-img'),
+        author: body.text('.comics-detail__author'),
+        intro: body.text('.comics-detail__desc'),
+        update: body.text('div > span > em'),
+        finish: isFinishText(body.text('.tag-list')),
+        tags: tags                       // 空数组也可直接传，宿主按无标签处理
+    };
+}
+```
+
+> 注意：若站点原本用一个 `.tag-list` 容器的整段文本做「完结」判断（如包子源），
+> 新增 `tags` 时**保留原有选择器与判断逻辑**，另选标签链接/角标节点单独取数组，
+> 不要让 `finish` 与 `tags` 复用同一段文本。
+
+### 写法二：页面内嵌 JSON / GraphQL（JSON 型站点）
+
+直接把后端返回的标签字段映射进来，确认它是字符串数组即可；后端若给字符串需先 `split`：
+
+```js
+var o = JSON.parse(jsonText).data.comic;
+var tags = isArray(o.tags) ? o.tags
+    : (o.tags ? String(o.tags).split(/[,，、\s]+/) : []);   // 兜底：逗号/顿号/空白分隔
+return {
+    title: o.name,
+    cover: o.cover,
+    tags: tags,
+    // …
+};
+```
+
+### 与分类主题（subject）对齐
+
+标签点击后只匹配 `subject` 维度，接入前对照本文件「分类」一节中 `getCategories()` 的 `subject` 列表：
+
+- 标签文案**直接复用** subject 项的 `title`（如 `恋爱`、`热血`、`搞笑`）最稳妥；
+- 站点标签是内部 slug/英文（如 `romance`）时，在 `parseInfo` 里映射成 subject 显示名，不要直接返回 slug；
+- 站点存在分类体系里没有的自由标签（如 `连载中`、`高人气`、某作者名）时，**不要**放进 `tags`——它们点过去必然提示「不支持」；
+- 站点没有 `subject` 维度（`getCategories()` 未声明主题）时，可不返回 `tags`，返回了也只会提示不支持。
+
+### 本地验证
+
+```bash
+node scripts/check_schema.mjs   # schema 自测：tags 非数组/含非字符串项时的纠正与回退
+node scripts/smoke.mjs          # 加载校验（SOURCE 元数据/必需函数）
+```
+
+带 UI 的联调用调试服务：`node debug/server.mjs`（见 `debug/README.md`），在详情步骤查看 `parseInfo` 的原始返回。日志中若出现 `[schema:parseInfo] tags 应为数组，已忽略`，说明把 `tags` 写成了非数组；出现 `tags 项应为字符串，已跳过` 说明数组里混入了非字符串元素。
 
 ## 状态 / 设置 / 登录
 

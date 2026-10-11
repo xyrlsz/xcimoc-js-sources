@@ -1035,13 +1035,26 @@ function __chkArray(result, name, itemFn) {
 }
 
 /* 详情对象：{ title?, cover?, author?, intro?, status?, update?, tags?, chapters? }
+ * tags 为字符串数组（漫画标签/题材），逐项转字符串、去空去重由宿主完成；这里只保证是数组、逐项为字符串。
  * chapters 宿主（parseInfo）只做 `o.optJSONArray("chapters")` 存到 comic.note，由 parseChapter/toChapters
  * 自行过滤，故此处只保证 chapters 是数组，不逐项强制 title/path（避免误伤合法章节）。 */
 function __chkInfo(result, name) {
     if (result === null || result === undefined) return null; // 合法
     if (!__isPO(result)) { __warn(name, '应为对象或 null'); return null; }
-    var sf = ['title', 'cover', 'author', 'intro', 'status', 'update', 'tags'];
+    var sf = ['title', 'cover', 'author', 'intro', 'status', 'update'];
     for (var i = 0; i < sf.length; i++) __cStr(result, name, sf[i]);
+    if (result.tags !== undefined && result.tags !== null) {
+        if (!isArray(result.tags)) { __warn(name, 'tags 应为数组，已忽略'); delete result.tags; }
+        else {
+            var tags = [];
+            for (var t = 0; t < result.tags.length; t++) {
+                var tv = result.tags[t];
+                if (tv === null || tv === undefined || !__isStr(tv)) { __warn(name, 'tags 项应为字符串，已跳过'); continue; }
+                tags.push(tv);
+            }
+            result.tags = tags;
+        }
+    }
     if (result.chapters !== undefined && result.chapters !== null && !isArray(result.chapters)) {
         __warn(name, 'chapters 应为数组');
         delete result.chapters;
