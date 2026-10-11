@@ -102,7 +102,7 @@
     {
       "type": 106,
       "title": "komiic",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "url": "sources/komiic.js",
       "baseUrl": "https://komiic.com"
     },

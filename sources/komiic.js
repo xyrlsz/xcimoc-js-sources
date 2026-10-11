@@ -363,13 +363,25 @@ var SOURCE = installSource(new (class extends MangaSource {
             author += comicObject.authors[j].name;
             if (j < comicObject.authors.length - 1) author += ',';
         }
+
+        var tags = [];
+        var tagSet = {};
+        var categories = comicObject.categories || [];
+        for (var k = 0; k < categories.length; k++) {
+            var t = (categories[k] && categories[k].name ? String(categories[k].name) : '').trim();
+            if (!t || tagSet[t]) continue;
+            tagSet[t] = true;
+            tags.push(t);
+        }
+
         return {
             title: comicObject.title,
             cover: comicObject.imageUrl,
             update: formatKomiicTime(comicObject.dateUpdated),
             author: author,
             intro: comicObject.description,
-            finish: comicObject.status !== 'ONGOING'
+            finish: comicObject.status !== 'ONGOING',
+            tags: tags
         };
     }
 
