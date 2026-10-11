@@ -18,6 +18,8 @@ var SOURCE = installSource(new (class extends MangaSource {
             title: 'MYCOMIC',
             baseUrl: 'https://mycomic.com',
             hosts: ['mycomic.com'],
+            // 有cloudflare防护，默认不启用
+            defaultEnable: false,
             webConfig: {
                 search: { useWebParser: true, autoScroll: false, interactiveChallenge: true },
                 info: { useWebParser: true, autoScroll: false, interactiveChallenge: true },
