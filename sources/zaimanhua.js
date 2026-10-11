@@ -2,13 +2,12 @@ const apiBaseUrl = 'https://v4api.zaimanhua.com';
 const pcBaseUrl = 'https://manhua.zaimanhua.com';
 
 // ---- 登录工具 ----
-// 从宿主登录态读取 token
 function loginToken() {
     var l = getLogin();
     if (!l) return '';
     try { var o = JSON.parse(l); return o.token || ''; } catch (e) { return ''; }
 }
-// 带 Bearer token 的请求头
+
 function authHeaders() {
     var h = { 'User-Agent': 'Dart/3.6 (dart:io)', platform: 'android' };
     var t = loginToken();
@@ -18,6 +17,146 @@ function authHeaders() {
 
 function isFinishText(text) {
     return text !== null && (text.indexOf('完结') >= 0 || text.indexOf('Completed') >= 0 || text.indexOf('完結') >= 0);
+}
+
+// ============================================================
+// 分类自动更新 / 持久化
+// ============================================================
+var CATEGORY_KEY = 'zaimanhua_categories';
+var CATEGORY_TIME_KEY = 'zaimanhua_categories_updated';
+
+// 分类组 id → getCategories() 键名映射
+// classifyList 中：id=1 题材，id=6 读者群，id=5 进度，id=4 地域
+var ZM_CLASSIFY_MAP = { 1: 'subject', 6: 'reader', 5: 'progress', 4: 'area' };
+
+// 内置默认分类（首次更新成功前 / 离线时兜底）
+var DEFAULT_CATEGORIES = {
+    subject: [
+        { title: '全部', value: '0' }, { title: '冒险', value: '4' },
+        { title: '欢乐向', value: '5' }, { title: '格斗', value: '6' },
+        { title: '科幻', value: '7' }, { title: '爱情', value: '8' },
+        { title: '侦探', value: '9' }, { title: '竞技', value: '10' },
+        { title: '魔法', value: '11' }, { title: '神鬼', value: '12' },
+        { title: '校园', value: '13' }, { title: '惊悚', value: '14' },
+        { title: '其他', value: '16' }, { title: '四格', value: '17' },
+        { title: '亲情', value: '3242' }, { title: 'ゆり', value: '3243' },
+        { title: '秀吉', value: '3244' }, { title: '悬疑', value: '3245' },
+        { title: '纯爱', value: '3246' }, { title: '热血', value: '3248' },
+        { title: '泛爱', value: '3249' }, { title: '历史', value: '3250' },
+        { title: '战争', value: '3251' }, { title: '萌系', value: '3252' },
+        { title: '宅系', value: '3253' }, { title: '治愈', value: '3254' },
+        { title: '励志', value: '3255' }, { title: '武侠', value: '3324' },
+        { title: '机战', value: '3325' }, { title: '音乐舞蹈', value: '3326' },
+        { title: '美食', value: '3327' }, { title: '职场', value: '3328' },
+        { title: '西方魔幻', value: '3365' }, { title: '高清单行', value: '4459' },
+        { title: 'TS', value: '4518' }, { title: '东方', value: '5077' },
+        { title: '魔幻', value: '5806' }, { title: '奇幻', value: '5848' },
+        { title: '节操', value: '6219' }, { title: '轻小说', value: '6316' },
+        { title: '颜艺', value: '6437' }, { title: '搞笑', value: '7568' },
+        { title: '仙侠', value: '7900' }, { title: '舰娘', value: '13627' },
+        { title: '动画', value: '17192' }, { title: 'AA', value: '18522' },
+        { title: '福瑞', value: '23323' }, { title: '生存', value: '23388' },
+        { title: '日常', value: '30788' }, { title: '画集', value: '31137' },
+        { title: '2025冬', value: '34093' }
+    ],
+    area: [
+        { title: '全部', value: '0' }, { title: '日本', value: '2304' },
+        { title: '韩国', value: '2305' }, { title: '欧美', value: '2306' },
+        { title: '港台', value: '2307' }, { title: '内地', value: '2308' },
+        { title: '其他', value: '8435' }
+    ],
+    progress: [
+        { title: '全部', value: '0' }, { title: '连载中', value: '2309' },
+        { title: '已完结', value: '2310' }, { title: '短篇', value: '29205' }
+    ],
+    reader: [
+        { title: '全部', value: '0' }, { title: '少年漫画', value: '3262' },
+        { title: '少女漫画', value: '3263' }, { title: '青年漫画', value: '3264' },
+        { title: '女青漫画', value: '13626' }
+    ],
+    order: [
+        { title: '更新', value: '1' }, { title: '人气', value: '2' }
+    ]
+};
+
+// 解析 classifyList → { subject, reader, progress, area }
+function parseClassifyFilters(body) {
+    var result = { subject: [], reader: [], progress: [], area: [] };
+    try {
+        var arr = JSON.parse(body).data.classifyList || [];
+        for (var i = 0; i < arr.length; i++) {
+            var group = arr[i];
+            var key = ZM_CLASSIFY_MAP[group.id];
+            if (!key) continue;
+            var list = group.list || [];
+            for (var j = 0; j < list.length; j++) {
+                var item = list[j];
+                result[key].push({
+                    title: String(item.tagName || '').trim(),
+                    value: String(item.tagId)
+                });
+            }
+        }
+    } catch (e) { /* ignore */ }
+    return result;
+}
+
+// 校验是否为可用分类数据
+function isValidCategories(f) {
+    return !!(f
+        && f.subject && f.subject.length
+        && f.area && f.area.length
+        && f.progress && f.progress.length
+        && f.reader && f.reader.length);
+}
+
+// 拉取 classify 接口并解析；失败返回 null
+function fetchClassifyFilters() {
+    var res = fetch('https://m.zaimanhua.com/api/app/v1/comic/filter/classify?_v=15', {
+        headers: authHeaders()
+    });
+    if (res && res.status === 200 && res.body) {
+        var filters = parseClassifyFilters(res.body);
+        if (isValidCategories(filters)) return filters;
+        log('[category] zaimanhua parse empty, check response structure');
+    } else {
+        log('[category] zaimanhua fetch failed status=' + (res ? res.status : 'null'));
+    }
+    return null;
+}
+
+// 自动更新分类并持久化（供 init 调用）；失败时保留上次数据
+function updateCategories() {
+    try {
+        var filters = fetchClassifyFilters();
+        if (!filters) {
+            log('[category] zaimanhua update failed, keep stored categories');
+            return false;
+        }
+        setSetting(CATEGORY_KEY, JSON.stringify(filters));
+        var now = Math.floor(Date.now() / 1000);
+        setSetting(CATEGORY_TIME_KEY, String(now));
+        log('[category] zaimanhua stored subject=' + filters.subject.length
+            + ' area=' + filters.area.length
+            + ' progress=' + filters.progress.length
+            + ' reader=' + filters.reader.length
+            + ' updatedAt=' + now);
+        return true;
+    } catch (e) {
+        log('[category] zaimanhua update error: ' + e);
+        return false;
+    }
+}
+
+// 读取持久化分类；无数据/损坏返回 null
+function loadStoredCategories() {
+    var raw = getSetting(CATEGORY_KEY, '');
+    if (!raw) return null;
+    try {
+        var obj = JSON.parse(raw);
+        if (isValidCategories(obj)) return obj;
+    } catch (e) { /* ignore */ }
+    return null;
 }
 
 var SOURCE = installSource(new (class extends MangaSource {
@@ -76,12 +215,18 @@ var SOURCE = installSource(new (class extends MangaSource {
                 author += data.authors[j].tag_name;
                 if (j < data.authors.length - 1) author += ',';
             }
+            var types = data.types || [];
+            var tags = [];
+            for (var j = 0; j < types.length; j++) {
+                tags.push(types[j].tag_name);
+            }
             return {
                 title: data.title,
                 cover: data.cover,
                 update: formatTimestamp(data.last_updatetime),
                 author: author,
                 intro: data.description,
+                tags: tags,
                 finish: isFinishText(html)
             };
         } catch (e) { /* ignore */ }
@@ -169,7 +314,6 @@ var SOURCE = installSource(new (class extends MangaSource {
                 var data = json && json.data;
                 if (data && data.user && data.user.token) {
                     var user = data.user;
-                    // 存 password 以便登录态失效(401)时 SDK 自动重新登录
                     setLogin(JSON.stringify({ token: user.token, uid: String(user.uid), username: username, password: password }));
                     log('[login] success, token saved, uid=' + user.uid);
                     return { success: true, message: '登录成功' };
@@ -228,6 +372,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     init() {
+        updateCategories();
         this.auto_sign();
     }
 
@@ -246,7 +391,6 @@ var SOURCE = installSource(new (class extends MangaSource {
             log('[sign] http status=' + (res ? res.status : 'null')
                 + ' body=' + ((res && res.body) ? res.body.slice(0, 200) : ''));
             if (res && res.status === 200) {
-                // 尝试解析响应体里的提示信息（如已签到/成功）
                 var msg = '签到成功';
                 if (res.body) {
                     try {
@@ -283,56 +427,22 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getCategories() {
+        // 优先使用 init() 自动更新并持久化的分类；失败时回退内置默认列表
+        var stored = loadStoredCategories();
+        var subject = (stored && stored.subject) || DEFAULT_CATEGORIES.subject;
+        var area = (stored && stored.area) || DEFAULT_CATEGORIES.area;
+        var progress = (stored && stored.progress) || DEFAULT_CATEGORIES.progress;
+        var reader = (stored && stored.reader) || DEFAULT_CATEGORIES.reader;
+
         return {
             composite: true,
             pageSize: 20,
             format: apiBaseUrl + '/app/v1/comic/filter/list?page={page}&sortType={order}&theme={subject}&cate={reader}&status={progress}&zone={area}&size=20',
-            subject: [
-                { title: '全部', value: '0' }, { title: '冒险', value: '4' },
-                { title: '欢乐向', value: '5' }, { title: '格斗', value: '6' },
-                { title: '科幻', value: '7' }, { title: '爱情', value: '8' },
-                { title: '侦探', value: '9' }, { title: '竞技', value: '10' },
-                { title: '魔法', value: '11' }, { title: '神鬼', value: '12' },
-                { title: '校园', value: '13' }, { title: '惊悚', value: '14' },
-                { title: '其他', value: '16' }, { title: '四格', value: '17' },
-                { title: '亲情', value: '3242' }, { title: 'ゆり', value: '3243' },
-                { title: '秀吉', value: '3244' }, { title: '悬疑', value: '3245' },
-                { title: '纯爱', value: '3246' }, { title: '热血', value: '3248' },
-                { title: '泛爱', value: '3249' }, { title: '历史', value: '3250' },
-                { title: '战争', value: '3251' }, { title: '萌系', value: '3252' },
-                { title: '宅系', value: '3253' }, { title: '治愈', value: '3254' },
-                { title: '励志', value: '3255' }, { title: '武侠', value: '3324' },
-                { title: '机战', value: '3325' }, { title: '音乐舞蹈', value: '3326' },
-                { title: '美食', value: '3327' }, { title: '职场', value: '3328' },
-                { title: '西方魔幻', value: '3365' }, { title: '高清单行', value: '4459' },
-                { title: 'TS', value: '4518' }, { title: '东方', value: '5077' },
-                { title: '魔幻', value: '5806' }, { title: '奇幻', value: '5848' },
-                { title: '节操', value: '6219' }, { title: '轻小说', value: '6316' },
-                { title: '颜艺', value: '6437' }, { title: '搞笑', value: '7568' },
-                { title: '仙侠', value: '7900' }, { title: '舰娘', value: '13627' },
-                { title: '动画', value: '17192' }, { title: 'AA', value: '18522' },
-                { title: '福瑞', value: '23323' }, { title: '生存', value: '23388' },
-                { title: '日常', value: '30788' }, { title: '画集', value: '31137' },
-                { title: '2025冬', value: '34093' }
-            ],
-            area: [
-                { title: '全部', value: '0' }, { title: '日本', value: '2304' },
-                { title: '韩国', value: '2305' }, { title: '欧美', value: '2306' },
-                { title: '港台', value: '2307' }, { title: '内地', value: '2308' },
-                { title: '其他', value: '8435' }
-            ],
-            progress: [
-                { title: '全部', value: '0' }, { title: '连载中', value: '2309' },
-                { title: '已完结', value: '2310' }, { title: '短篇', value: '29205' }
-            ],
-            reader: [
-                { title: '全部', value: '0' }, { title: '少年漫画', value: '3262' },
-                { title: '少女漫画', value: '3263' }, { title: '青年漫画', value: '3264' },
-                { title: '女青漫画', value: '13626' }
-            ],
-            order: [
-                { title: '更新', value: '1' }, { title: '人气', value: '2' }
-            ]
+            subject: subject,
+            area: area,
+            progress: progress,
+            reader: reader,
+            order: DEFAULT_CATEGORIES.order
         };
     }
 })());

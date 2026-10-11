@@ -4,6 +4,26 @@ function isFinishText(text) {
     return text !== null && (text.indexOf('完结') >= 0 || text.indexOf('Completed') >= 0 || text.indexOf('完結') >= 0);
 }
 
+// 统一清洗 tags：去空白/分隔符、去重、去空
+function normalizeGuaziTags(input) {
+    var out = [];
+    var set = {};
+    if (!input) return out;
+    var arr = (typeof input === 'string') ? [input] : input;
+    for (var i = 0; i < arr.length; i++) {
+        var t = String(arr[i] == null ? '' : arr[i])
+            .replace(/^[\s#·・]+|[\s#·・]+$/g, '')   // 去前后 # 和间隔符
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (!t || set[t]) continue;
+        // 过滤明显是状态词的（连载 / 已完结 / 短篇等），避免混入 tags
+        if (/^(连载|連載|连载中|連載中|已完结|已完結|完结|完結|短篇)$/.test(t)) continue;
+        set[t] = true;
+        out.push(t);
+    }
+    return out;
+}
+
 var SOURCE = installSource(new (class extends MangaSource {
     constructor() {
         super({
@@ -80,7 +100,7 @@ var SOURCE = installSource(new (class extends MangaSource {
             + ' ' + body.text('.cinema-info .meta')
             + ' ' + body.text('.side-card .desc');
 
-        var info = { title: '', cover: '', author: '', intro: '', update: '', finish: isFinishText(status) };
+        var info = { title: '', cover: '', author: '', intro: '', update: '', finish: isFinishText(status), tags: [] };
 
         // 详情页 ld+json 的 @graph 含 ComicStory：name/author/genre/image/description/dateModified
         try {
@@ -97,6 +117,7 @@ var SOURCE = installSource(new (class extends MangaSource {
                     info.author = author;
                     info.intro = node.description || '';
                     info.update = node.dateModified || '';
+                    info.tags = normalizeGuaziTags(node.genre);   // ★ 优先用 JSON-LD 的 genre
                     break;
                 }
             }
@@ -117,6 +138,34 @@ var SOURCE = installSource(new (class extends MangaSource {
                 if (authorNodes[i].text('span') === '作者') {
                     info.author = authorNodes[i].text('b a');
                     break;
+                }
+            }
+        }
+
+        // ★ tags 兜底：JSON-LD 没拿到就从 HTML 结构里补
+        if (!info.tags.length) {
+            // 1) mobile 版：.mobile-comic-tags 文本 "热血 / 冒险 / 玄幻"
+            var mobileTags = (body.text('.mobile-comic-tags') || '').trim();
+            if (mobileTags) {
+                info.tags = normalizeGuaziTags(mobileTags.split('/'));
+            }
+            // 2) desktop 版：.cinema-info .meta 里只取 <a class="badge">（跳过 span.badge 的连载状态）
+            if (!info.tags.length) {
+                var badgeNodes = body.select('.cinema-info .meta a.badge');
+                var arr = [];
+                for (var b = 0; b < badgeNodes.length; b++) {
+                    arr.push(badgeNodes[b].text());
+                }
+                info.tags = normalizeGuaziTags(arr);
+            }
+            // 3) 最后的兜底：.cinema-strip 里的「题材」字段（"热血 · 冒险 · 玄幻 · …"）
+            if (!info.tags.length) {
+                var stripNodes = body.select('.cinema-strip > div');
+                for (var s = 0; s < stripNodes.length; s++) {
+                    if (stripNodes[s].text('span') === '题材') {
+                        info.tags = normalizeGuaziTags((stripNodes[s].text('b') || '').split('·'));
+                        break;
+                    }
                 }
             }
         }

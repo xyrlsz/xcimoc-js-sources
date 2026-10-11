@@ -53,7 +53,7 @@
     {
       "type": 102,
       "title": "热辣漫画",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "url": "sources/hotmanga.js",
       "baseUrl": "https://www.manga2026.com"
     },
@@ -130,7 +130,7 @@
     {
       "type": 12,
       "title": "再漫画",
-      "version": "1.1.5",
+      "version": "1.1.6",
       "url": "sources/zaimanhua.js",
       "baseUrl": "https://m.zaimanhua.com"
     },
@@ -172,14 +172,14 @@
     {
       "type": 120,
       "title": "瓜子漫画",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "url": "sources/guazimanhua.js",
       "baseUrl": "https://www.guazimanhua.com"
     },
     {
       "type": 121,
       "title": "漫画人",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "url": "sources/manhuaren.js",
       "baseUrl": "https://www.manhuaren.com"
     },

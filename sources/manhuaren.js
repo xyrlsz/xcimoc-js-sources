@@ -180,6 +180,17 @@ var SOURCE = installSource(new (class extends MangaSource {
         if (intro) {
             intro = intro.replace(/\[\+展开\]/g, '').replace(/\[-折叠\]/g, '').trim();
         }
+
+        var tagNodes = body.select('.detail-main-info-class a');
+        var tags = [];
+        var tagSet = {};
+        for (var i = 0; i < tagNodes.length; i++) {
+            var t = (tagNodes[i].text() || '').trim();
+            if (!t || tagSet[t]) continue;
+            tagSet[t] = true;
+            tags.push(t);
+        }
+
         return {
             title: body.text('.detail-main-info-title'),
             cover: cover,
@@ -187,6 +198,7 @@ var SOURCE = installSource(new (class extends MangaSource {
             author: author,
             intro: intro,
             finish: isFinishText(body.text('.detail-list-title-1')),
+            tags: tags,
             // 章节在详情页内联，直接一并返回：宿主会缓存到 comic.note 供 parseChapter 消费
             chapters: parseChapterList(html)
         };

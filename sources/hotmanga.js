@@ -58,6 +58,17 @@ var SOURCE = installSource(new (class extends MangaSource {
             author += body.author[i].name;
             if (i < body.author.length - 1) author += ', ';
         }
+
+        var tags = [];
+        var tagSet = {};
+        var theme = body.theme || [];
+        for (var k = 0; k < theme.length; k++) {
+            var t = (theme[k] && theme[k].name ? String(theme[k].name) : '').trim();
+            if (!t || tagSet[t]) continue;
+            tagSet[t] = true;
+            tags.push(t);
+        }
+
         if (comicInfo.groups) setState('groups:' + cid, comicInfo.groups);
         return {
             title: body.name,
@@ -66,6 +77,7 @@ var SOURCE = installSource(new (class extends MangaSource {
             author: author,
             intro: body.brief,
             finish: (body.status && body.status.value) !== 0,
+            tags: tags,
             note: comicInfo.groups
         };
     }
