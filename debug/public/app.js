@@ -40,8 +40,8 @@ const FLOW_FIELDS = {
     { k: 'cid', label: '漫画 cid', type: 'text', def: '' },
   ],
   chapter: [
-    { k: 'cid', label: '漫画 cid', type: 'text', def: '' },
-    { k: 'comicJson', label: 'comicJson（可选，JSON 字符串）', type: 'text', def: '{}' },
+    { k: 'cid', label: '漫画 cid（自动先请求详情页）', type: 'text', def: '' },
+    { k: 'comicJson', label: 'comicJson 覆盖（可选，JSON）', type: 'text', def: '' },
   ],
   images: [
     { k: 'cid', label: '漫画 cid', type: 'text', def: '' },

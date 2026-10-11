@@ -259,7 +259,7 @@ function runSource(sourceFile, method, args) {
   }
   const src = vctx.SOURCE;
   if (!src) return { ok: false, error: 'SOURCE 未定义（脚本可能未用 installSource）', logs: ctx.logs };
-  if (typeof src[method] !== 'function') {
+  if (typeof vctx[method] !== 'function') {
     return { ok: false, error: '方法 ' + method + ' 未实现', logs: ctx.logs };
   }
   try {
@@ -346,11 +346,42 @@ function executeFlow(sourceFile, flow, params) {
       }
     } else if (flow === 'chapter') {
       const cid = params.cid || '';
-      const req = P('getChapterRequest', [params.html || '', cid]);
-      if (req.ok && req.result) {
-        const resp = fetchForStep(flowWebConfig(req.meta, 'chapter'), req.result);
-        steps.push({ step: resp.render ? 'webview' : 'fetch', ok: true, result: resp.result });
-        P('parseChapter', [resp.body, params.comicJson || '{}']);
+      const infoReq = P('getInfoRequest', [cid]);
+      if (infoReq.ok && infoReq.result) {
+        const infoResp = fetchForStep(flowWebConfig(infoReq.meta, 'info'), infoReq.result);
+        steps.push({ step: infoResp.render ? 'webview' : 'fetch', ok: true, result: infoResp.result });
+        const info = P('parseInfo', [infoResp.body, cid]);
+        if (info.ok && info.result) {
+          if (Array.isArray(info.result.chapters) && info.result.chapters.length > 0) {
+            steps.push({ step: 'chapters (parseInfo)', ok: true, result: info.result.chapters });
+          } else {
+            const chapterReq = runSource(sourceFile, 'getChapterRequest', [infoResp.body, cid]);
+            const missingChapterRequest = !chapterReq.ok
+              && chapterReq.error === '方法 getChapterRequest 未实现';
+            if (!missingChapterRequest) {
+              steps.push({ step: 'getChapterRequest', ...chapterReq });
+            }
+            let comic = { cid, title: info.result.title || '' };
+            if (params.comicJson) {
+              comic = typeof params.comicJson === 'string'
+                ? JSON.parse(params.comicJson)
+                : params.comicJson;
+            }
+            if (missingChapterRequest || (chapterReq.ok && !chapterReq.result)) {
+              steps.push({
+                step: 'getChapterRequest fallback',
+                ok: true,
+                result: null,
+                detail: '使用详情页 HTML 调用 parseChapter',
+              });
+              P('parseChapter', [infoResp.body, comic]);
+            } else if (chapterReq.ok && chapterReq.result) {
+              const chapterResp = fetchForStep(flowWebConfig(chapterReq.meta, 'chapter'), chapterReq.result);
+              steps.push({ step: chapterResp.render ? 'webview' : 'fetch', ok: true, result: chapterResp.result });
+              P('parseChapter', [chapterResp.body, comic]);
+            }
+          }
+        }
       }
     } else if (flow === 'images') {
       const req = P('getImagesRequest', [params.cid || '', params.path || '']);

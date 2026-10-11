@@ -37,7 +37,8 @@ WebView 渲染相关环境变量（可放 `npm start` 前）：
 - **引导流程**（模拟 App 的 `getXxxRequest → fetch → parseXxx`）：
   - 搜索：`getSearchRequest` → fetch → `parseSearch`
   - 详情：`getInfoRequest` → fetch → `parseInfo`
-  - 章节：`getChapterRequest` → fetch → `parseChapter`
+  - 章节：`getInfoRequest` → fetch → `parseInfo` → 优先使用详情中的 `chapters`；否则调用
+    `getChapterRequest` → fetch → `parseChapter`。未实现或返回 `null` 时，用详情页 HTML 调用 `parseChapter`
   - 图片：`getImagesRequest` → fetch → `parseImages`
   - 分类：`getCategories` → `getCategoryRequest` → fetch → `parseCategory`
   - 登录：`login` → `getLoginState`

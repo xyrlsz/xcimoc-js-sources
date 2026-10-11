@@ -107,11 +107,22 @@ var SOURCE = installSource(new (class extends MangaSource {
             try {
                 var resp = fetch(baseUrl + '/morechapter', {
                     method: 'POST',
-                    body: 'id=' + (comic.cid || '')
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Referer': baseUrl + '/' + (comic.cid + '/' || ''),
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36'
+                    },
+                    body: 'id=' + (comic.cid || ''),
                 });
-                var data = JSON.parse(resp.body).data;
+
+                var body = typeof resp.body === 'string' ? JSON.parse(resp.body) : resp.body;
+                var data = body.data || [];
                 for (var j = 0; j < data.length; j++) {
-                    list.push({ title: data[j].chaptername, path: data[j].chapterid });
+                    list.push({
+                        title: data[j].chaptername,
+                        path: data[j].chapterid
+                    });
                 }
             } catch (e) { /* ignore */ }
         }
