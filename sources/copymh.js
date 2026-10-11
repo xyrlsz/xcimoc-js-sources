@@ -365,13 +365,29 @@ var SOURCE = installSource(new (class extends MangaSource {
             author += authorNodes[i].text();
             if (i < authorNodes.length - 1) author += ',';
         }
+
+        // ---- 题材 / tags 提取 ----
+        var tagNodes = body.select("div.comicParticulars-title-right ul li:contains(題材：) a");
+        if (!tagNodes || !tagNodes.length) {
+            tagNodes = body.select("div.comicParticulars-title-right ul li:contains(题材：) a");
+        }
+        var tags = [];
+        var tagSet = {};
+        for (var j = 0; j < tagNodes.length; j++) {
+            var t = (tagNodes[j].text() || '').replace(/^#\s*/, '').trim();
+            if (!t || tagSet[t]) continue;
+            tagSet[t] = true;
+            tags.push(t);
+        }
+
         return {
             title: body.text('div.comicParticulars-title-right > ul > li > h6'),
             cover: body.attr('div.comicParticulars-left-img > img', 'data-src'),
             update: update,
             author: author,
             intro: body.text('p.intro'),
-            finish: isFinishText(html)
+            finish: isFinishText(html),
+            tags: tags
         };
     }
 
