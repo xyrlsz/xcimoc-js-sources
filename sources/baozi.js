@@ -73,6 +73,35 @@ function relativeToDate(text) {
 }
 
 // ============================================================
+// 图片 CDN 域名池
+// ============================================================
+var IMG_HOSTS = [
+    's.baozicdn.com',
+    'as.baozimh.com',
+    'asgb-a2.linkdatas.com',
+    'as-rsa1-usla.baozicdn.com',
+    'ascn-a3.bzcdn.net',
+    'asgb-a3.bzcdn.net',
+    's1.baozicdn.com'
+];
+
+// 构造「图片域名」下拉选项：跟随原图 + 域名池
+function buildImgHostOptions() {
+    var opts = [{ label: '跟随原图', value: 'origin' }];
+    for (var i = 0; i < IMG_HOSTS.length; i++) {
+        opts.push({ label: IMG_HOSTS[i], value: IMG_HOSTS[i] });
+    }
+    return opts;
+}
+
+// 当前要使用的域名；'' 表示沿用原图域名
+function getImgHost() {
+    var v = getSetting('img_host', 'origin');
+    if (!v || v === 'origin') return '';
+    return v;
+}
+
+// ============================================================
 // 分类自动更新 / 持久化
 // ============================================================
 var CATEGORY_KEY = 'classify_filters';
@@ -336,16 +365,24 @@ var SOURCE = installSource(new (class extends MangaSource {
         var body = DOM(html);
         var nodes = body.select('.comic-contain > .chapter-img');
         log('[images] baozi htmlLen=' + (html ? html.length : 0) + ' nodes=' + nodes.length);
+
         var imgQuality = (getSetting('img_quality', 'w640') === 'w640') ? '/w640' : '';
+        var host = getImgHost();
+
         for (var i = 1; i <= nodes.length; i++) {
             var imgUrl = nodes[i - 1].attr('.comic-contain__item', 'data-src');
             var m = /^(https?:\/\/)?([^\/\s:]+)(:\d+)?(\/[a-z]comic\/.*)/.exec(imgUrl || '');
             if (m) {
-                imgUrl = m[1] + m[2] + imgQuality + m[4];
+                // 指定了域名就替换，否则沿用原图域名
+                var useHost = host || m[2];
+                imgUrl = m[1] + useHost + imgQuality + m[4];
             }
             list.push({ url: imgUrl, lazy: false });
         }
-        log('[images] baozi parsed ' + list.length + ', first=' + (list[0] ? list[0].url : 'none'));
+
+        log('[images] baozi parsed ' + list.length
+            + ', host=' + (host || 'origin')
+            + ', first=' + (list[0] ? list[0].url : 'none'));
         return list;
     }
 
@@ -397,7 +434,12 @@ var SOURCE = installSource(new (class extends MangaSource {
                     { label: '省流（w640）', value: 'w640' },
                     { label: '原图（高清）', value: 'orig' }
                 ]
-            }, {
+            },
+            {
+                key: 'img_host', label: '图片域名', type: 'select', default: 'origin',
+                options: buildImgHostOptions()
+            },
+            {
                 key: 'use_global', label: '使用海外源', type: 'bool', default: true,
             }
         ];
