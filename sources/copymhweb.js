@@ -1,6 +1,6 @@
 // 站点经常更换域名/接口：默认值 + 从设置读取（可持久化，换域名时用「重新探测接口」更新）
 const DEFAULT_WEBSITE = 'https://www.copy4000.com';
-const DEFAULT_SEARCH_API = '/api/kb/web/searchci/comics';
+const DEFAULT_SEARCH_API = '/api/kb/web/searchcl/comics';
 const CANDIDATE_DOMAINS = [
     'https://www.copy4000.com',
     'https://www.copy3000.com',
