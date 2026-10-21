@@ -46,7 +46,7 @@
     {
       "type": 27,
       "title": "拷贝漫画Web",
-      "version": "1.0.15",
+      "version": "1.0.16",
       "url": "sources/copymhweb.js",
       "baseUrl": "https://www.copy4000.com"
     },

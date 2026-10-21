@@ -298,6 +298,8 @@ var SOURCE = installSource(new (class extends MangaSource {
                 info: {
                     useWebParser: true,
                     autoScroll: false,
+                    waitForSelector: '.table-default-box .tab-content .tab-pane ul > a[title]',
+                    waitForSelectorTimeoutMs: 6000,
                     injectJs: "javascript:(function() { var btns = document.getElementsByClassName('next-all'); for(var i = 0; i < btns.length; i++) { btns[i].click(); } })()"
                 },
                 images: {
