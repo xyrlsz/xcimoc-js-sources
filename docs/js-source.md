@@ -25,6 +25,48 @@
 
 ---
 
+## WebView 配置（webConfig）
+
+对需要执行网页 JavaScript 才能得到完整内容的源，可以在 `SOURCE` 构造参数中配置 `webConfig`。
+搜索、详情、章节、图片和惰性图片阶段可分别配置：
+
+```js
+webConfig: {
+    info: {
+        useWebParser: true,
+        autoScroll: false,
+        injectJs: "javascript:(function() { /* 可选的页面操作 */ })()",
+        waitForSelector: '.chapter-list a',
+        waitForSelectorTimeoutMs: 15000
+    }
+}
+```
+
+支持的阶段键为 `search`、`info`、`chapter`、`images`、`imagesLazy`。各阶段可用字段：
+
+| 字段 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `useWebParser` | boolean | `false` | 使用 WebView 加载、执行页面脚本后再解析。 |
+| `autoScroll` | boolean | `true` | 是否自动滚动页面以触发懒加载。 |
+| `injectJs` | string | 无 | 页面 DOM 就绪后执行的 JavaScript；可用于点击展开等操作。 |
+| `waitForSelector` | string | 无 | 抓取 HTML 前等待此 CSS 选择器匹配到至少一个元素。 |
+| `waitForSelectorTimeoutMs` | number | `15000` | 等待选择器的最长时间（毫秒）；超时会使本次 WebView 解析失败。 |
+| `handleCloudflare` | boolean | `true` | 是否处理 Cloudflare 挑战。 |
+| `cloudflareTimeoutMs` | number | `30000` | 等待 Cloudflare JS 挑战通过的最长时间（毫秒）。 |
+| `interactiveChallenge` | boolean | `false` | 是否允许将交互式 Cloudflare 验证显示给用户处理。 |
+
+`waitForSelector` 在页面加载及 `injectJs` 执行后开始轮询，间隔约 250 毫秒。匹配到元素后立即抓取当前 DOM；
+未配置时保持原有抓取流程。超时或选择器语法无效会报错，不会将未完成的页面当成成功结果。
+建议选择**异步内容实际出现时才存在**的元素，而不是总会存在的空容器或“加载中”占位元素。例如章节列表可等待章节链接：
+
+```js
+waitForSelector: '.table-default-box .tab-content .tab-pane ul > a[title]'
+```
+
+该配置由 App 宿主实现；旧版 App 不认识 `waitForSelector`，会忽略它并按旧逻辑抓取页面。使用该选项需要安装支持此配置的 App 版本。
+
+---
+
 ## 分类（getCategories）
 
 `getCategories()` 返回分类定义，宿主据此渲染分类下拉并构造请求 format：
