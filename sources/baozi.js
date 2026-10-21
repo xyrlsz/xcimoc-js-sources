@@ -352,8 +352,11 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getImagesRequest(cid, path) {
+        // path 已带章节分组前缀（如「0_3」）。若再补一层 0_ 会变成 0_0_3，
+        // 站点只会返回第 0 章，导致无论点哪一话都打开同一话。
+        var slot = path.indexOf('_') >= 0 ? path : '0_' + path;
         return {
-            url: format('%s/comic/chapter/%s/0_%s.html', getBaseUrl(), cid, path),
+            url: format('%s/comic/chapter/%s/%s.html', getBaseUrl(), cid, slot),
             headers: {
                 referer: getBaseUrl() + '/',
             }
