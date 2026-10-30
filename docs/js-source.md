@@ -55,6 +55,11 @@ webConfig: {
 | `cloudflareTimeoutMs` | number | `30000` | 等待 Cloudflare JS 挑战通过的最长时间（毫秒）。 |
 | `interactiveChallenge` | boolean | `false` | 是否允许将交互式 Cloudflare 验证显示给用户处理。 |
 
+Cloudflare 认证：App 会复用 WebView 完成验证后写入的 Cookie（如 `cf_clearance`），同一站点只需验证一次，
+后续的页面解析、`fetch()` 请求与图片下载都会自动带上该 Cookie 并落盘保存。命中挑战页时先自动等待几秒
+（多数 JS 挑战会自动通过），仍未通过才在 `interactiveChallenge` 为 `true` 时弹出验证界面；同一站点同一时刻
+只会弹出一个验证界面（其余请求等待并复用验证结果），交互式验证至少等待 3 分钟，避免用户操作未完成就被判超时。
+
 `waitForSelector` 在页面加载及 `injectJs` 执行后开始轮询，间隔约 250 毫秒。匹配到元素后立即抓取当前 DOM；
 未配置时保持原有抓取流程。超时或选择器语法无效会报错，不会将未完成的页面当成成功结果。
 建议选择**异步内容实际出现时才存在**的元素，而不是总会存在的空容器或“加载中”占位元素。例如章节列表可等待章节链接：
