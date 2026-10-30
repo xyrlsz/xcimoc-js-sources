@@ -13,7 +13,7 @@ xcimoc-js-sources/
 ├── sources/
 │   ├── manhuagui.js    # 每个文件对应一个源
 │   ├── dm5.js
-│   └── ...             # 共 27 个源
+│   └── ...             
 ├── status/             # 漫画源可用性测试程序（Node，生成状态数据）
 ├── debug/              # 本地 WebUI 调试器（Node + Playwright 渲染）
 ├── docs/               # GitHub Pages 状态页（index.html + status.json）
