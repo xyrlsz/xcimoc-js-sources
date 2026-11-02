@@ -1,3 +1,9 @@
+var UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+function desktopHeaders() {
+    return { 'User-Agent': UA, Referer: 'https://www.dm5.com/' };
+}
+
 function normalizeUpdate(update) {
     if (!update) return null;
     var d = new Date();
@@ -48,7 +54,7 @@ var SOURCE = installSource(new (class extends MangaSource {
             url: 'https://m.dm5.com/pagerdata.ashx',
             method: 'POST',
             body: 't=7&pageindex=' + page + '&title=' + encodeURIComponent(keyword),
-            headers: { Referer: 'http://m.dm5.com' }
+            headers: { 'User-Agent': UA, Referer: 'http://m.dm5.com' }
         };
     }
 
@@ -87,7 +93,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getInfoRequest(cid) {
-        return { url: 'https://www.dm5.com/' + cid };
+        return { url: 'https://www.dm5.com/' + cid, headers: desktopHeaders() };
     }
 
     parseInfo(html, cid) {
@@ -148,7 +154,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     getImagesRequest(cid, path) {
         return {
             url: 'https://m.dm5.com/' + path,
-            headers: { Referer: 'https://m.dm5.com/' + path }
+            headers: { 'User-Agent': UA, Referer: 'https://m.dm5.com/' + path }
         };
     }
 
@@ -176,7 +182,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getLazyRequest(url) {
-        return { url: url, headers: { Referer: 'https://www.dm5.com' } };
+        return { url: url, headers: { 'User-Agent': UA, Referer: 'https://www.dm5.com' } };
     }
 
     parseLazy(html, url) {
@@ -200,7 +206,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         // 并合并多余连字符（{page} 已被宿主替换为页码）
         var url = String(format).replace(/\s+/g, '-').replace(/-{2,}/g, '-');
         log('[category] dm5 req url=' + url);
-        return { url: url };
+        return { url: url, headers: desktopHeaders() };
     }
 
     parseCategory(html, page) {
@@ -223,7 +229,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getHeader() {
-        return null;
+        return desktopHeaders();
     }
 
     getCategories() {
