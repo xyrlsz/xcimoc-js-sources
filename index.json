@@ -123,7 +123,7 @@
     {
       "type": 111,
       "title": "YY漫画",
-      "version": "1.0.0",
+      "version": "1.0.3",
       "url": "sources/yymanhua.js",
       "baseUrl": "https://www.yymanhua.com"
     },

@@ -1,4 +1,12 @@
 const baseUrl = 'https://www.yymanhua.com';
+const desktopUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0';
+
+function getHeaders(referer) {
+    return {
+        'User-Agent': desktopUserAgent,
+        Referer: referer || baseUrl + '/'
+    };
+}
 
 function isFinishText(text) {
     return text !== null && (text.indexOf('完结') >= 0 || text.indexOf('Completed') >= 0 || text.indexOf('完結') >= 0);
@@ -20,8 +28,10 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getSearchRequest(keyword, page) {
-        if (page !== 1) return null;
-        return { url: baseUrl + '/search?title=' + keyword };
+        return {
+            url: baseUrl + '/search?title=' + encodeURIComponent(keyword) + '&page=' + page,
+            headers: getHeaders()
+        };
     }
 
     parseSearch(html, page) {
@@ -41,18 +51,21 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getInfoRequest(cid) {
-        return { url: this.getUrl(cid) };
+        return { url: this.getUrl(cid), headers: getHeaders() };
     }
 
     parseInfo(html, cid) {
         var body = DOM(html);
-        var author = (body.text('p.detail-info-tip > span:nth-child(1)') || '')
-            .replace('作者：', '').replace(/ /g, ',');
+        var authorNodes = body.select('p.detail-info-tip > span:nth-child(1) > a');
+        var authors = [];
+        for (var i = 0; i < authorNodes.length; i++) {
+            authors.push(authorNodes[i].text());
+        }
         return {
             title: body.text('p.detail-info-title'),
             cover: body.src('img.detail-info-cover'),
             update: match('\\d+-\\d+-\\d+', body.text('div.detail-list-form-title'), 0),
-            author: author,
+            author: authors.join(','),
             intro: body.text('p.detail-info-content'),
             finish: isFinishText(html)
         };
@@ -64,7 +77,7 @@ var SOURCE = installSource(new (class extends MangaSource {
         var list = [];
         for (var i = 0; i < nodes.length; i++) {
             list.push({
-                title: nodes[i].text(),
+                title: nodes[i].text().replace(/\s+/g, ' '),
                 path: (nodes[i].href() || '').replace(/\//g, '')
             });
         }
@@ -72,7 +85,7 @@ var SOURCE = installSource(new (class extends MangaSource {
     }
 
     getImagesRequest(cid, path) {
-        return { url: baseUrl + '/' + path };
+        return { url: baseUrl + '/' + path, headers: getHeaders() };
     }
 
     parseImages(html) {
@@ -88,14 +101,18 @@ var SOURCE = installSource(new (class extends MangaSource {
             list.push({
                 url: url,
                 lazy: true,
-                headers: { Referer: baseUrl + '/' }
+                headers: getHeaders()
             });
         }
         return list;
     }
 
     getLazyRequest(url) {
-        return { url: url, headers: { Referer: baseUrl } };
+        return { url: url, headers: getHeaders(baseUrl) };
+    }
+
+    getHeader() {
+        return getHeaders();
     }
 
     parseLazy(html, url) {
