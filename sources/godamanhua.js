@@ -38,9 +38,10 @@ var SOURCE = installSource(new (class extends MangaSource {
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
             var href = node.href('a') || '';
-            var parts = href.split('/');
+            var match = /\/manga\/([\w\-]+)/.exec(href);
+            var cid = match ? match[1] : '';
             list.push({
-                cid: parts.length > 2 ? parts[2] : href,
+                cid: cid || href,
                 title: node.text('.cardtitle'),
                 cover: node.src('.text-center > div > img'),
                 update: '',
@@ -119,11 +120,10 @@ var SOURCE = installSource(new (class extends MangaSource {
 
     parseImages(html) {
         var list = [];
-        var imgs = DOM(html).select('div#chapcontent > div > img');
+        var imgs = DOM(html).select('#chapcontent img, div#chapcontent img, #chapcontent > div > img, div#chapcontent > div > img');
         for (var i = 0; i < imgs.length; i++) {
-            var url = imgs[i].attr('data-src');
-            if (!url) url = imgs[i].attr('src');
-            if (!url) continue;
+            var url = imgs[i].attr('data-src') || imgs[i].attr('data-path') || imgs[i].attr('src');
+            if (!url || /^data:image\//i.test(url) || /^blob:/i.test(url)) continue;
             list.push({ url: url, lazy: false });
         }
         return list;

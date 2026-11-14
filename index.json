@@ -116,7 +116,7 @@
     {
       "type": 108,
       "title": "G社漫畫",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "url": "sources/godamanhua.js",
       "baseUrl": "https://m.g-mh.org"
     },
