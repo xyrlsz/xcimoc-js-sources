@@ -1,0 +1,1285 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-28T03:20:24.346Z",
+  "keyword": "漫画",
+  "dataFile": null,
+  "runner": "github-actions",
+  "node": "v24.22.3",
+  "durationMs": 20787,
+  "summary": {
+    "total": 27,
+    "ok": 8,
+    "warn": 7,
+    "fail": 9,
+    "skip": 3
+  },
+  "sources": [
+    {
+      "type": 0,
+      "title": "漫画柜",
+      "version": "1.0.1",
+      "url": "sources/manhuagui.js",
+      "baseUrl": "https://www.manhuagui.com",
+      "status": "warn",
+      "error": "搜索「漫画」无结果（接口可达，可能关键词不匹配）",
+      "durationMs": 1823,
+      "steps": [
+        {
+          "name": "search",
+          "status": "warn",
+          "ms": 1789,
+          "http": 200,
+          "detail": "",
+          "error": "搜索「漫画」无结果（接口可达，可能关键词不匹配）"
+        },
+        {
+          "name": "info",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索无结果，未继续测试",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索无结果，未继续测试",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索无结果，未继续测试",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 5,
+      "title": "动漫屋",
+      "version": "1.0.5",
+      "url": "sources/dm5.js",
+      "baseUrl": "https://m.dm5.com",
+      "status": "ok",
+      "error": null,
+      "durationMs": 4716,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 1377,
+          "http": 200,
+          "detail": "命中 10 条，首条「漫漫漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 1484,
+          "http": 200,
+          "detail": "漫漫漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 21,
+          "http": null,
+          "detail": "3 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "ok",
+          "ms": 1823,
+          "http": 200,
+          "detail": "2 张图片，首张资源可访问（HTTP 200）",
+          "error": null
+        }
+      ],
+      "logs": [
+        "[info] dm5 parse htmlLen=63683"
+      ],
+      "case": null
+    },
+    {
+      "type": 51,
+      "title": "腾讯动漫",
+      "version": "1.0.1",
+      "url": "sources/tencent.js",
+      "baseUrl": "https://m.ac.qq.com/",
+      "status": "ok",
+      "error": null,
+      "durationMs": 7206,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 1551,
+          "http": 200,
+          "detail": "命中 9 条，首条「多杀我几次，我就无敌了」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 1484,
+          "http": 200,
+          "detail": "多杀我几次，我就无敌了",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 1047,
+          "http": 200,
+          "detail": "110 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "ok",
+          "ms": 3093,
+          "http": 200,
+          "detail": "1 张图片，首张资源可访问（HTTP 200）",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 52,
+      "title": "布卡漫画",
+      "version": "1.0.1",
+      "url": "sources/buka.js",
+      "baseUrl": "https://www.bukamh.com",
+      "status": "warn",
+      "error": null,
+      "durationMs": 784,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 418,
+          "http": 200,
+          "detail": "命中 10 条，首条「StarSavior四格漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 334,
+          "http": 200,
+          "detail": "StarSavior四格漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 3,
+          "http": null,
+          "detail": "9 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染，已跳过",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 49,
+      "title": "漫画台",
+      "version": "1.0.1",
+      "url": "sources/manhuatai.js",
+      "baseUrl": "https://www.kanman.com",
+      "status": "fail",
+      "error": "parseInfo 返回空",
+      "durationMs": 6950,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 3087,
+          "http": 200,
+          "detail": "命中 10 条，首条「我的漫画异世界」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "fail",
+          "ms": 3858,
+          "http": 200,
+          "detail": "",
+          "error": "parseInfo 返回空"
+        },
+        {
+          "name": "chapter",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "详情不可用",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "详情不可用",
+          "error": null
+        }
+      ],
+      "logs": [
+        "[schema:parseInfo] 执行异常: Cannot read properties of null (reading 'indexOf')"
+      ],
+      "case": null
+    },
+    {
+      "type": 26,
+      "title": "拷贝漫画",
+      "version": "1.0.14",
+      "url": "sources/copymh.js",
+      "baseUrl": "https://www.copy4000.com",
+      "status": "ok",
+      "error": null,
+      "durationMs": 3117,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 418,
+          "http": 200,
+          "detail": "命中 12 条，首条「Unni短篇漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 1027,
+          "http": 200,
+          "detail": "Unni短篇漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 978,
+          "http": null,
+          "detail": "10 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "ok",
+          "ms": 687,
+          "http": 200,
+          "detail": "26 张图片，首张资源可访问（HTTP 200）",
+          "error": null
+        }
+      ],
+      "logs": [
+        "[copy] parseChapter cid=Unniduanpanmnhua ccz=16 dnt=1",
+        "[copy] chapters resp status=200 len=3290",
+        "[copy] decrypt ok=true len=1612",
+        "[copy] parsed 10 chapters"
+      ],
+      "case": null
+    },
+    {
+      "type": 27,
+      "title": "拷贝漫画Web",
+      "version": "1.0.16",
+      "url": "sources/copymhweb.js",
+      "baseUrl": "https://www.copy4000.com",
+      "status": "skip",
+      "error": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+      "durationMs": 4,
+      "steps": [
+        {
+          "name": "search",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 102,
+      "title": "热辣漫画",
+      "version": "1.0.3",
+      "url": "sources/hotmanga.js",
+      "baseUrl": "https://www.manga2026.com",
+      "status": "ok",
+      "error": null,
+      "durationMs": 3643,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 862,
+          "http": 200,
+          "detail": "命中 30 条，首条「秋山凜子漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 816,
+          "http": 200,
+          "detail": "秋山凜子漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 825,
+          "http": 200,
+          "detail": "1 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "ok",
+          "ms": 1134,
+          "http": 200,
+          "detail": "2 张图片，首张资源可访问（HTTP 200）",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 82,
+      "title": "MangaBZ",
+      "version": "1.0.0",
+      "url": "sources/mangabz.js",
+      "baseUrl": "http://www.mangabz.com/",
+      "status": "warn",
+      "error": "搜索「漫画」无结果（接口可达，可能关键词不匹配）",
+      "durationMs": 355,
+      "steps": [
+        {
+          "name": "search",
+          "status": "warn",
+          "ms": 337,
+          "http": 200,
+          "detail": "",
+          "error": "搜索「漫画」无结果（接口可达，可能关键词不匹配）"
+        },
+        {
+          "name": "info",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索无结果，未继续测试",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索无结果，未继续测试",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索无结果，未继续测试",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 11,
+      "title": "咚漫漫画",
+      "version": "1.0.0",
+      "url": "sources/dongmanmanhua.js",
+      "baseUrl": "https://www.dongmanmanhua.cn",
+      "status": "fail",
+      "error": "images: HTTP 500",
+      "durationMs": 6956,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 2274,
+          "http": 200,
+          "detail": "命中 7 条，首条「无限挑战接力漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 3092,
+          "http": 200,
+          "detail": "无限挑战接力漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 28,
+          "http": null,
+          "detail": "7 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "fail",
+          "ms": 1502,
+          "http": 500,
+          "detail": "",
+          "error": "HTTP 500"
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 91,
+      "title": "优酷漫画",
+      "version": "1.0.1",
+      "url": "sources/ykmh.js",
+      "baseUrl": "https://m.ykmh.net/",
+      "status": "skip",
+      "error": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+      "durationMs": 3,
+      "steps": [
+        {
+          "name": "search",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 101,
+      "title": "包子漫画",
+      "version": "1.1.3",
+      "url": "sources/baozi.js",
+      "baseUrl": "https://www.baozimh.com",
+      "status": "ok",
+      "error": null,
+      "durationMs": 3597,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 994,
+          "http": 200,
+          "detail": "命中 90 条，首条「好漫畫」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 952,
+          "http": 200,
+          "detail": "好漫畫",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 18,
+          "http": null,
+          "detail": "40 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "ok",
+          "ms": 1556,
+          "http": 200,
+          "detail": "84 张图片，首张资源可访问（HTTP 200）",
+          "error": null
+        }
+      ],
+      "logs": [
+        "[images] baozi htmlLen=113567 nodes=84",
+        "[images] baozi parsed 84, host=origin, first=https://s2.baozicdn.com/w640/scomic/haomanhua-haomanhua/0/40-pqz1/1.jpg"
+      ],
+      "case": null
+    },
+    {
+      "type": 103,
+      "title": "MYCOMIC",
+      "version": "1.0.1",
+      "url": "sources/mycomic.js",
+      "baseUrl": "https://mycomic.com",
+      "status": "skip",
+      "error": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+      "durationMs": 3,
+      "steps": [
+        {
+          "name": "search",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染（Cloudflare 等），自动化环境无法验证",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 104,
+      "title": "读漫屋",
+      "version": "1.0.3",
+      "url": "sources/dumanwu.js",
+      "baseUrl": "http://dumanwu1.com",
+      "status": "warn",
+      "error": null,
+      "durationMs": 766,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 380,
+          "http": 200,
+          "detail": "命中 42 条，首条「加油大魔王！千年之章·飒漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 377,
+          "http": 200,
+          "detail": "加油大魔王！千年之章·飒漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 6,
+          "http": null,
+          "detail": "8 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染，已跳过",
+          "error": null
+        }
+      ],
+      "logs": [
+        "[schema:parseChapter] 章节项缺少有效 path，已跳过",
+        "[schema:parseChapter] 章节项缺少有效 path，已跳过"
+      ],
+      "case": null
+    },
+    {
+      "type": 106,
+      "title": "komiic",
+      "version": "1.2.1",
+      "url": "sources/komiic.js",
+      "baseUrl": "https://komiic.com",
+      "status": "fail",
+      "error": "images: 图片 HTTP 400",
+      "durationMs": 4483,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 1517,
+          "http": 200,
+          "detail": "命中 100 条，首条「人氣漫畫家×抑鬱症漫畫家」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 842,
+          "http": 200,
+          "detail": "人氣漫畫家×抑鬱症漫畫家",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 901,
+          "http": 200,
+          "detail": "29 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "fail",
+          "ms": 1214,
+          "http": 200,
+          "detail": "",
+          "error": "图片 HTTP 400"
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 107,
+      "title": "漫画鱼",
+      "version": "1.0.0",
+      "url": "sources/manhuayu.js",
+      "baseUrl": "https://www.manhuayu88.com",
+      "status": "fail",
+      "error": "images: 未解析到图片",
+      "durationMs": 2791,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 959,
+          "http": 200,
+          "detail": "命中 30 条，首条「世界计划四格漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 1008,
+          "http": 200,
+          "detail": "世界计划四格漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 26,
+          "http": null,
+          "detail": "157 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "fail",
+          "ms": 739,
+          "http": 200,
+          "detail": "",
+          "error": "未解析到图片"
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 108,
+      "title": "G社漫畫",
+      "version": "1.0.1",
+      "url": "sources/godamanhua.js",
+      "baseUrl": "https://m.g-mh.org",
+      "status": "fail",
+      "error": "HTTP 403",
+      "durationMs": 267,
+      "steps": [
+        {
+          "name": "search",
+          "status": "fail",
+          "ms": 264,
+          "http": 403,
+          "detail": "",
+          "error": "HTTP 403"
+        },
+        {
+          "name": "info",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索未通过，未继续测试",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索未通过，未继续测试",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索未通过，未继续测试",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 111,
+      "title": "YY漫画",
+      "version": "1.0.3",
+      "url": "sources/yymanhua.js",
+      "baseUrl": "https://www.yymanhua.com",
+      "status": "fail",
+      "error": "chapter: 未解析到章节列表",
+      "durationMs": 593,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 275,
+          "http": 200,
+          "detail": "命中 12 条，首条「留堂漫畫」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 273,
+          "http": 200,
+          "detail": "留堂漫畫",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "fail",
+          "ms": 3,
+          "http": null,
+          "detail": "",
+          "error": "未解析到章节列表"
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "无可用章节",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 12,
+      "title": "再漫画",
+      "version": "1.1.6",
+      "url": "sources/zaimanhua.js",
+      "baseUrl": "https://m.zaimanhua.com",
+      "status": "fail",
+      "error": "chapter: 未解析到章节列表",
+      "durationMs": 4862,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 2518,
+          "http": 200,
+          "detail": "命中 24 条，首条「漫画大学」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 2335,
+          "http": 200,
+          "detail": "漫画大学",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "fail",
+          "ms": 0,
+          "http": null,
+          "detail": "",
+          "error": "未解析到章节列表"
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "无可用章节",
+          "error": null
+        }
+      ],
+      "logs": [
+        "[chapter] parsed 0 chapters"
+      ],
+      "case": null
+    },
+    {
+      "type": 113,
+      "title": "漫本",
+      "version": "1.0.0",
+      "url": "sources/manben.js",
+      "baseUrl": "https://www.manben.com",
+      "status": "warn",
+      "error": null,
+      "durationMs": 1832,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 1238,
+          "http": 200,
+          "detail": "命中 12 条，首条「Up喵漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 555,
+          "http": 200,
+          "detail": "Up喵漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 12,
+          "http": null,
+          "detail": "98 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染，已跳过",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 114,
+      "title": "古风漫画",
+      "version": "1.0.1",
+      "url": "sources/gfmh.js",
+      "baseUrl": "https://www.gfmh.app",
+      "status": "warn",
+      "error": null,
+      "durationMs": 1110,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 697,
+          "http": 200,
+          "detail": "命中 10 条，首条「侦探漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 367,
+          "http": 200,
+          "detail": "侦探漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 16,
+          "http": null,
+          "detail": "376 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染，已跳过",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 116,
+      "title": "漫画屋",
+      "version": "1.0.0",
+      "url": "sources/mh5.js",
+      "baseUrl": "https://mh5.app",
+      "status": "warn",
+      "error": null,
+      "durationMs": 876,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 445,
+          "http": 200,
+          "detail": "命中 30 条，首条「公主的谎言（禾林漫画）」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 366,
+          "http": 200,
+          "detail": "公主的谎言（禾林漫画）",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 13,
+          "http": null,
+          "detail": "10 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "需 WebView 渲染，已跳过",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 118,
+      "title": "动漫嗨",
+      "version": "1.0.0",
+      "url": "sources/dongmanhi.js",
+      "baseUrl": "https://www.dongmanhi.com",
+      "status": "ok",
+      "error": null,
+      "durationMs": 2066,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 757,
+          "http": 200,
+          "detail": "命中 12 条，首条「漫画家与助手」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 354,
+          "http": 200,
+          "detail": "漫画家与助手",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 9,
+          "http": null,
+          "detail": "50 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "ok",
+          "ms": 920,
+          "http": 200,
+          "detail": "7 张图片，首张资源可访问（HTTP 200）",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 119,
+      "title": "漫画之家",
+      "version": "1.0.1",
+      "url": "sources/manhuazhijia.js",
+      "baseUrl": "https://www.manhuahome.com",
+      "status": "fail",
+      "error": "HTTP 403",
+      "durationMs": 1963,
+      "steps": [
+        {
+          "name": "search",
+          "status": "fail",
+          "ms": 1960,
+          "http": 403,
+          "detail": "",
+          "error": "HTTP 403"
+        },
+        {
+          "name": "info",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索未通过，未继续测试",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索未通过，未继续测试",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "搜索未通过，未继续测试",
+          "error": null
+        }
+      ],
+      "logs": [],
+      "case": null
+    },
+    {
+      "type": 120,
+      "title": "瓜子漫画",
+      "version": "1.0.2",
+      "url": "sources/guazimanhua.js",
+      "baseUrl": "https://www.guazimanhua.com",
+      "status": "ok",
+      "error": null,
+      "durationMs": 2621,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 815,
+          "http": 200,
+          "detail": "命中 36 条，首条「明日高校——《明日之子乐团季》同名漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 898,
+          "http": 200,
+          "detail": "明日高校——《明日之子乐团季》同名漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 16,
+          "http": null,
+          "detail": "11 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "ok",
+          "ms": 841,
+          "http": 200,
+          "detail": "132 张图片，首张资源可访问（HTTP 200）",
+          "error": null
+        }
+      ],
+      "logs": [
+        "[images] guazi parsed 132, first=https://img.guazicdn.com/th/comics/chapters/13094/260422/11_1.webp"
+      ],
+      "case": null
+    },
+    {
+      "type": 121,
+      "title": "漫画人",
+      "version": "1.0.1",
+      "url": "sources/manhuaren.js",
+      "baseUrl": "https://www.manhuaren.com",
+      "status": "ok",
+      "error": null,
+      "durationMs": 3914,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 1211,
+          "http": 200,
+          "detail": "命中 22 条，首条「漫漫漫画」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 735,
+          "http": 200,
+          "detail": "漫漫漫画",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "ok",
+          "ms": 0,
+          "http": null,
+          "detail": "详情页返回 3 话",
+          "error": null
+        },
+        {
+          "name": "images",
+          "status": "ok",
+          "ms": 1933,
+          "http": 200,
+          "detail": "2 张图片，首张资源可访问（HTTP 200）",
+          "error": null
+        }
+      ],
+      "logs": [
+        "[chapter] manhuaren parsed 3 chapters, groups=1, reverse=false",
+        "[images] manhuaren parsed 2 images"
+      ],
+      "case": null
+    },
+    {
+      "type": 110,
+      "title": "vomic漫",
+      "version": "1.1.0",
+      "url": "sources/vomicmh.js",
+      "baseUrl": "https://www.vomicmh.com",
+      "status": "fail",
+      "error": "chapter: 未解析到章节列表",
+      "durationMs": 3097,
+      "steps": [
+        {
+          "name": "search",
+          "status": "ok",
+          "ms": 2309,
+          "http": 200,
+          "detail": "命中 12 条，首条「漫画战“疫”」",
+          "error": null
+        },
+        {
+          "name": "info",
+          "status": "ok",
+          "ms": 739,
+          "http": 200,
+          "detail": "漫画战“疫”",
+          "error": null
+        },
+        {
+          "name": "chapter",
+          "status": "fail",
+          "ms": 9,
+          "http": null,
+          "detail": "",
+          "error": "未解析到章节列表"
+        },
+        {
+          "name": "images",
+          "status": "skip",
+          "ms": 0,
+          "http": null,
+          "detail": "无可用章节",
+          "error": null
+        }
+      ],
+      "logs": [
+        "[chapter] vomic parsed 0 chapters",
+        "[chapter] vomic parsed 0 chapters"
+      ],
+      "case": null
+    }
+  ]
+}
